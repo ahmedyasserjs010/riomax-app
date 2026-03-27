@@ -10,16 +10,25 @@ import { useTheme } from '../context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
+import { TopNavbar } from '../components/TopNavbar';
+import { useAppNavigation } from '../context/NavigationContext';
+
 export const ProfileStack = () => {
   const { colors } = useTheme();
+  const { openMenu } = useAppNavigation();
+
   return (
     <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: 'bold' },
+      screenOptions={({ navigation }) => ({
+        header: (props) => (
+          <TopNavbar 
+            title={props.options.title} 
+            onMenuPress={openMenu} 
+            navigation={navigation} 
+          />
+        ),
         contentStyle: { backgroundColor: colors.background },
-      }}
+      })}
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} options={{ title: 'حسابي' }} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} options={{ title: 'المفضلة' }} />

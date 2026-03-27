@@ -93,6 +93,8 @@ export interface ISlider {
   _id: string;
   id?: string;
   image?: IImage;
+  imageUrl?: string;
+  imagePublicId?: string;
   title?: string;
   link?: string;
 }

@@ -1,16 +1,14 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { CategoriesScreen } from '../screens/CategoriesScreen';
-import { CategoryProductsScreen } from '../screens/CategoryProductsScreen';
+import { ProductsListScreen } from '../screens/ProductsListScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { useTheme } from '../context/ThemeContext';
-
-const Stack = createNativeStackNavigator();
-
 import { TopNavbar } from '../components/TopNavbar';
 import { useAppNavigation } from '../context/NavigationContext';
 
-export const CategoryStack = () => {
+const Stack = createNativeStackNavigator();
+
+export const ProductsStack = () => {
   const { colors } = useTheme();
   const { openMenu } = useAppNavigation();
 
@@ -27,8 +25,7 @@ export const CategoryStack = () => {
         contentStyle: { backgroundColor: colors.background },
       })}
     >
-      <Stack.Screen name="CategoriesMain" component={CategoriesScreen} options={{ title: 'الأقسام' }} />
-      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} options={({ route }: any) => ({ title: route.params?.name || 'المنتجات' })} />
+      <Stack.Screen name="ProductsListMain" component={ProductsListScreen} options={{ title: 'كل المنتجات' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'تفاصيل المنتج' }} />
     </Stack.Navigator>
   );

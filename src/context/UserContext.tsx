@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/apiClient';
 import { LoginPayload, User } from '../types';
+import { storage } from '../utils/storage';
 
 interface UserContextType {
   userToken: string | null;
@@ -22,8 +22,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   const saveAuthData = async (accessToken: string, refreshToken: string) => {
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
+    await storage.setItem('accessToken', accessToken);
+    await storage.setItem('refreshToken', refreshToken);
     setUserToken(accessToken);
     try {
       const decoded = jwtDecode<any>(accessToken);
@@ -65,8 +65,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('Logout API error', e);
     } finally {
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('refreshToken');
+      await storage.deleteItem('accessToken');
+      await storage.deleteItem('refreshToken');
       setUserToken(null);
       setUserData(null);
     }
@@ -75,7 +75,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const loadStoredAuth = async () => {
       try {
-        const token = await SecureStore.getItemAsync('accessToken');
+        const token = await storage.getItem('accessToken');
         if (token) {
           setUserToken(token);
           const decoded = jwtDecode<any>(token);

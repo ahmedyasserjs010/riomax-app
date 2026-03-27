@@ -1,146 +1,213 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
   FlatList, 
   StyleSheet, 
-  TouchableOpacity, 
   ActivityIndicator,
-  TextInput,
-  Dimensions 
+  RefreshControl,
+  Platform
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { ProductService } from '../services/HomeServices';
-import { IProduct } from '../types';
+import { ProductService, CategoryService } from '../services/HomeServices';
+import { IProduct, ICategory, ISubCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width } = Dimensions.get('window');
+import { ProductCard } from '../components/ProductCard';
+import { FilterBox } from '../components/FilterBox';
 
 export const ProductsListScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
-  const [products, setProducts] = useState<IProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(route.params?.initialSearch || '');
+  
+  // Filter State
+  const initialCategory = route.params?.selectedCategoryId || null;
+  const initialSearch = route.params?.initialSearch || '';
 
-  const fetchProducts = async (query = '') => {
-    setLoading(true);
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [allCategoriesData, setAllCategoriesData] = useState<any[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
+  
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [subCategories, setSubCategories] = useState<ISubCategory[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchingMore, setFetchingMore] = useState(false);
+
+  // Fetch Category Tree
+  const fetchLayoutData = async () => {
     try {
-      const response = await ProductService.getProducts({ keyword: query, limit: 50 });
-      setProducts(response.data.products);
-    } catch (err) {
-      console.error('Fetch products error', err);
+      const catRes = await CategoryService.getCategoriesWithSub();
+      const cats = catRes.data || [];
+      setAllCategoriesData(cats);
+      setCategories(cats);
+    } catch (error) {
+      console.error('Error fetching layout data:', error);
+    }
+  };
+
+  // Fetch Products
+  const fetchProducts = async (currentPage = 1, isLoadMore = false) => {
+    try {
+      if (isLoadMore) setFetchingMore(true);
+      else setLoading(true);
+
+      const params: any = { page: currentPage, limit: 10 };
+      if (searchQuery.trim() !== '') params.keyword = searchQuery;
+      if (selectedCategory) params.categoryId = selectedCategory;
+      if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
+
+      const prodRes = await ProductService.getProducts(params);
+      const newProducts = prodRes.data?.products || [];
+      
+      if (isLoadMore) {
+        setProducts(prev => [...prev, ...newProducts]);
+      } else {
+        setProducts(newProducts);
+      }
+      
+      setTotalProducts(prodRes.data?.pagination?.totalCount || 0);
+      setTotalPages(prodRes.data?.pagination?.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
+      setFetchingMore(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts(searchQuery);
+    fetchLayoutData();
+    fetchProducts(1, false);
   }, []);
 
-  const handleSearch = () => {
-    fetchProducts(searchQuery);
+  // Sync SubCategories
+  useEffect(() => {
+    if (selectedCategory) {
+      const cat = allCategoriesData.find(c => c._id === selectedCategory || c.id === selectedCategory);
+      setSubCategories(cat?.subCategories || []);
+    } else {
+      setSubCategories([]);
+    }
+  }, [selectedCategory, allCategoriesData]);
+
+  // Re-fetch when filters change
+  useEffect(() => {
+    if (loading && products.length === 0) return;
+    setPage(1);
+    fetchProducts(1, false);
+  }, [selectedCategory, selectedSubCategory]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setPage(1);
+    fetchLayoutData();
+    fetchProducts(1, false);
+  };
+
+  const handleSearchSubmit = () => {
+    setPage(1);
+    fetchProducts(1, false);
+  };
+
+  const handleLoadMore = () => {
+    if (!fetchingMore && page < totalPages && !loading) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchProducts(nextPage, true);
+    }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.searchContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <Ionicons name="search" size={20} color={colors.textMuted} />
-          <TextInput 
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="ابحث عن منتج..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
+      <FlatList
+        data={products}
+        keyExtractor={(item) => (item._id || item.id || Math.random()).toString()}
+        numColumns={2}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
+        ListHeaderComponent={
+          <>
+            <View style={{ height: 10 }} />
+            <FilterBox 
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSubmitSearch={handleSearchSubmit}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              subCategories={subCategories}
+              selectedSubCategory={selectedSubCategory}
+              onSelectSubCategory={setSelectedSubCategory}
+              totalProductsCount={totalProducts}
+            />
+            <View style={{ height: 10 }} />
+          </>
+        }
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.columnWrapper}
+        renderItem={({ item }) => (
+          <ProductCard 
+            product={item} 
+            onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })} 
           />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => { setSearchQuery(''); fetchProducts(''); }}>
-              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item._id || item.id}
-          numColumns={2}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="search-outline" size={80} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>لم نجد أي منتجات تطابق بحثك.</Text>
+        )}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          fetchingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={Colors.primary} />
             </View>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[styles.productCard, { backgroundColor: colors.card }]}
-              onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })}
-            >
-              <Image 
-                source={{ uri: item.images[0]?.secure_url }} 
-                style={styles.productImage} 
-                contentFit="cover" 
-              />
-              <View style={styles.productInfo}>
-                <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={styles.price}>{item.priceAfterDiscount} ج.م</Text>
-                  {item.discountAmountProduct > 0 && (
-                    <Text style={styles.oldPrice}>{item.price} ج.م</Text>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
-      )}
+          ) : <View style={{ height: 40 }} />
+        }
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={80} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                لم نجد أي منتجات تطابق بحثك.
+              </Text>
+            </View>
+          ) : (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 60 }} />
+          )
+        }
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  searchContainer: { padding: 12, borderBottomWidth: 1 },
-  searchBar: { 
-    flexDirection: 'row', 
+  listContent: {
+    paddingBottom: 20,
+  },
+  columnWrapper: {
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1, 
     alignItems: 'center', 
-    paddingHorizontal: 12, 
-    height: 45, 
-    borderRadius: 10, 
-    borderWidth: 1,
-    gap: 8
+    marginTop: 80, 
+    paddingHorizontal: 40
   },
-  searchInput: { flex: 1, fontSize: 14, textAlign: 'right' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { padding: 8 },
-  productCard: { 
-    width: (width - 32) / 2, 
-    margin: 4, 
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  emptyText: { 
+    marginTop: 20, 
+    textAlign: 'center', 
+    fontSize: 16 
   },
-  productImage: { width: '100%', height: 160 },
-  productInfo: { padding: 10 },
-  productName: { fontSize: 13, fontWeight: '500', height: 40, marginBottom: 4, textAlign: 'left' },
-  priceContainer: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  price: { color: Colors.primary, fontWeight: 'bold', fontSize: 14 },
-  oldPrice: { fontSize: 11, color: '#94a3b8', textDecorationLine: 'line-through' },
-  empty: { flex: 1, alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
-  emptyText: { marginTop: 20, textAlign: 'center', fontSize: 16 },
 });

@@ -15,7 +15,7 @@ export const UserService = {
 
 export const OrderService = {
   getUserInvoices: async () => {
-    const response = await apiClient.get('/order/userInvoices') as any;
+    const response = await apiClient.get('/order/my-orders') as any;
     return response.data || [];
   },
   

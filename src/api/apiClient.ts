@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
 export const BASE_URL = 'https://api.riomax.com.eg/api/v1';
 
@@ -29,12 +29,12 @@ const processQueue = (error: any, token: string | null = null) => {
 apiClient.interceptors.request.use(
   async (config: any) => {
     try {
-      const token = await SecureStore.getItemAsync('accessToken');
+      const token = await storage.getItem('accessToken');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (e) {
-      console.error('Error fetching token from SecureStore', e);
+      console.error('Error fetching token from storage', e);
     }
     return config;
   },
@@ -43,7 +43,7 @@ apiClient.interceptors.request.use(
 
 // Response interceptor for token refresh
 apiClient.interceptors.response.use(
-  (response: any) => response.data,
+  (response: any) => response,
   async (error: any) => {
     const originalRequest = error.config;
 
@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        const refreshToken = await storage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
 
         const { data } = await axios.post(`${BASE_URL}/auth/refresh-token`, {}, {
@@ -77,8 +77,8 @@ apiClient.interceptors.response.use(
 
         const { accessToken, refreshToken: newRefresh } = data.data.newCredentials;
 
-        await SecureStore.setItemAsync('accessToken', accessToken);
-        await SecureStore.setItemAsync('refreshToken', newRefresh);
+        await storage.setItem('accessToken', accessToken);
+        await storage.setItem('refreshToken', newRefresh);
 
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         processQueue(null, accessToken);
@@ -89,10 +89,9 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         
-        await SecureStore.deleteItemAsync('accessToken');
-        await SecureStore.deleteItemAsync('refreshToken');
+        await storage.deleteItem('accessToken');
+        await storage.deleteItem('refreshToken');
         
-        // Note: Global navigation redirect should be handled via a listener or UserContext
         return Promise.reject(refreshError);
       }
     }
