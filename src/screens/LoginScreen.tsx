@@ -32,7 +32,10 @@ export const LoginScreen = ({ navigation }: any) => {
     setLoading(true);
     try {
       await login({ email, password });
-      // Navigation is handled automatically by AppNavigator watching isAuthenticated
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
     } catch (err: any) {
       Alert.alert('فشل تسجيل الدخول', err.message || 'تأكد من صحة البيانات والمحاولة مرة أخرى');
     } finally {
@@ -88,7 +91,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
           <TouchableOpacity 
             style={styles.forgotBtn}
-            onPress={() => Alert.alert('قريباً', 'سيتم تفعيل استعادة كلمة المرور قريباً')}
+            onPress={() => navigation.navigate('ForgotPassword')}
           >
             <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
           </TouchableOpacity>

@@ -90,8 +90,20 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ data, autoPlayInterval =
         })}
         onMomentumScrollEnd={(event) => {
           const index = Math.round(event.nativeEvent.contentOffset.x / SLIDER_WIDTH);
-          setActiveIndex(index);
+          if (index !== activeIndex) setActiveIndex(index);
         }}
+        onScroll={(event) => {
+          // Fallback for smoother index tracking on some platforms
+          const index = Math.round(event.nativeEvent.contentOffset.x / SLIDER_WIDTH);
+          if (index !== activeIndex) {
+            // Only update if it's a significant change to avoid unnecessary renders
+            const scrollX = event.nativeEvent.contentOffset.x;
+            if (Math.abs(scrollX - index * SLIDER_WIDTH) < 5) {
+               setActiveIndex(index);
+            }
+          }
+        }}
+        scrollEventThrottle={16}
         renderItem={({ item }) => {
           const imgUrl = item.image?.secure_url || item.imageUrl;
           return (

@@ -6,11 +6,13 @@ import { Colors } from '../theme/colors';
 import { HomeStack } from './HomeStack';
 import { ProductsStack } from './ProductsStack';
 import { ProfileStack } from './ProfileStack';
+import { useAppNavigation } from '../context/NavigationContext';
 
 const Tab = createBottomTabNavigator();
 
 export const TabNavigator = () => {
   const { colors } = useTheme();
+  const { openProfileSidebar } = useAppNavigation();
 
   return (
     <Tab.Navigator
@@ -36,7 +38,17 @@ export const TabNavigator = () => {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ title: 'الرئيسية', headerShown: false }} />
       <Tab.Screen name="Products" component={ProductsStack} options={{ title: 'كل المنتجات', headerShown: false }} />
-      <Tab.Screen name="Profile" component={ProfileStack} options={{ title: 'حسابي', headerShown: false }} />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileStack} 
+        options={{ title: 'حسابي', headerShown: false }} 
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            openProfileSidebar();
+          },
+        }}
+      />
     </Tab.Navigator>
   );
 };

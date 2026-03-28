@@ -1,5 +1,5 @@
-import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useUser } from '../context/UserContext';
 import { TabNavigator } from './TabNavigator';
 import { AuthStack } from './AuthStack';
@@ -9,7 +9,10 @@ import { useTheme } from '../context/ThemeContext';
 
 import { useAppNavigation } from '../context/NavigationContext';
 import { BurgerMenu } from '../components/BurgerMenu';
+import { ProfileSidebar } from '../components/ProfileSidebar';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
+
+const RootStack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
   const { isAuthenticated, isLoading, logout } = useUser();
@@ -26,14 +29,25 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <TabNavigator />
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="MainTabs" component={TabNavigator} />
+        <RootStack.Screen name="Auth" component={AuthStack} />
+      </RootStack.Navigator>
       <NavigationConsumer />
     </NavigationContainer>
   );
 };
 
 const NavigationConsumer = () => {
-  const { isMenuVisible, closeMenu, isLogoutModalVisible, closeLogoutModal, openLogoutModal } = useAppNavigation();
+  const { 
+    isMenuVisible, 
+    closeMenu, 
+    isLogoutModalVisible, 
+    closeLogoutModal, 
+    openLogoutModal,
+    isProfileSidebarVisible,
+    closeProfileSidebar
+  } = useAppNavigation();
   const { logout } = useUser();
   const navigation = require('@react-navigation/native').useNavigation();
 
@@ -44,6 +58,11 @@ const NavigationConsumer = () => {
         onClose={closeMenu} 
         navigation={navigation}
         onLogout={openLogoutModal}
+      />
+      <ProfileSidebar 
+        isVisible={isProfileSidebarVisible}
+        onClose={closeProfileSidebar}
+        navigation={navigation}
       />
       <LogoutConfirmModal 
         isVisible={isLogoutModalVisible} 

@@ -26,8 +26,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     setIsLoading(true);
     try {
-      const response = await apiClient.get('/wishlist') as any;
-      setWishlist(response.data || []);
+      const response = await apiClient.get('/wishlist/getUserWishlist') as any;
+      setWishlist(response.data?.data?.wishlist?.books || []);
     } catch (e) {
       console.error('Error fetching wishlist', e);
     } finally {
@@ -41,9 +41,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Logic from web app: if exists in list, call DELETE /wishlist/:id, else POST /wishlist
       const exists = wishlist.some(item => (item._id || item.id) === productId);
       if (exists) {
-        await apiClient.delete(`/wishlist/${productId}`);
+        await apiClient.delete(`/wishlist/removeFromWishlist/${productId}`);
       } else {
-        await apiClient.post('/wishlist', { productId });
+        await apiClient.post('/wishlist/addToWishlist', { productId });
       }
       await refreshWishlist();
     } catch (error) {

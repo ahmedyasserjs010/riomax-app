@@ -41,8 +41,8 @@ export const RegisterScreen = ({ navigation }: any) => {
     setLoading(true);
     try {
       await apiClient.post('/auth/register', formData);
-      Alert.alert('نجاح', 'تم إنشاء الحساب بنجاح. يرجى تأكيد بريدك الإلكتروني.', [{
-        text: 'حسناً', onPress: () => navigation.navigate('Login')
+      Alert.alert('نجاح', 'تم إنشاء الحساب بنجاح. يرجى تأكيد بريدك الإلكتروني من خلال الرمز المرسل إليك.', [{
+        text: 'حسناً', onPress: () => navigation.navigate('ConfirmEmail', { email: formData.email })
       }]);
     } catch (err: any) {
       Alert.alert('فشل التسجيل', err.message || 'حدث خطأ أثناء إنشاء الحساب');

@@ -6,12 +6,15 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   ActivityIndicator,
-  Dimensions 
+  Dimensions,
+  Alert
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+import { AuthGuard } from '../components/AuthGuard';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
@@ -22,6 +25,7 @@ export const WishlistScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { wishlist, toggleWishlist, isLoading } = useWishlist();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useUser();
 
   const handleAddToCart = async (product: IProduct) => {
     try {
@@ -31,6 +35,17 @@ export const WishlistScreen = ({ navigation }: any) => {
       console.error(err);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <AuthGuard 
+      title="لم يتم اضافة منتجات بعد" 
+      subtitle="قم بتسجيل الدخول اولا واضف المنتجات"
+    >
+        <View />
+      </AuthGuard>
+    );
+  }
 
   if (isLoading && wishlist.length === 0) {
     return (
@@ -105,9 +120,6 @@ export const WishlistScreen = ({ navigation }: any) => {
     </View>
   );
 };
-
-// ... using Alert here so need to import it
-import { Alert } from 'react-native';
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

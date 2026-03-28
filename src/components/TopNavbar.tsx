@@ -46,7 +46,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ title = 'ريوماكس', 
           </TouchableOpacity>
           
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Cart')} 
+            onPress={() => navigation.navigate('Profile', { screen: 'Cart' })} 
             style={styles.iconButton}
           >
             <View>

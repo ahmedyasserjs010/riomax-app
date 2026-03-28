@@ -10,7 +10,8 @@ import {
   Share,
   Alert,
   FlatList,
-  Platform
+  Platform,
+  useWindowDimensions
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
@@ -22,11 +23,12 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { ProductCard } from '../components/ProductCard';
 
-const { width } = Dimensions.get('window');
+
 
 export const ProductDetailScreen = ({ route, navigation }: any) => {
   const { productId } = route.params;
   const { colors, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   
@@ -36,19 +38,30 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const flatListRef = React.useRef<FlatList>(null);
+
+  const scrollToIndex = (index: number) => {
+    if (product?.images && index >= 0 && index < product.images.length) {
+      flatListRef.current?.scrollToIndex({ index, animated: true });
+      setActiveImageIndex(index);
+    }
+  };
 
   useEffect(() => {
     const fetchProductAndRelated = async () => {
       try {
-        const data = await ProductService.getProductById(productId);
-        setProduct(data);
+        const res = await ProductService.getProductById(productId);
+        // CRITICAL: API returns { message, data: IProduct } — we must unwrap .data
+        const productData = res.data || res;
+        setProduct(productData);
 
         // Fetch related products from the same category
-        if (data.category && (data.category._id || data.category.id)) {
-          const catId = data.category._id || data.category.id;
-          const relatedRes = await ProductService.getProducts({ category: catId, limit: 10 });
+        if (productData.category && (productData.category._id || productData.category.id)) {
+          const catId = productData.category._id || productData.category.id;
+          // IMPORTANT: Backend expects categoryId, not category
+          const relatedRes = await ProductService.getProducts({ categoryId: catId, limit: 10 });
           const filteredRelated = (relatedRes.data?.products || []).filter(
-            (p: IProduct) => (p._id || p.id) !== (data._id || data.id)
+            (p: IProduct) => (p._id || p.id) !== (productData._id || productData.id)
           );
           setRelatedProducts(filteredRelated);
         }
@@ -78,7 +91,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
     if (!product) return;
     try {
       await Share.share({
-        message: `تفقد هذا المنتج الرائع من ريوماكس: ${product.name} - ${product.priceAfterDiscount} ج.م\nhttps://riomax.com.eg/product/${product._id || product.id}`,
+        message: `تفقد هذا المنتج الرائع من ريوماكس: ${product.name} - ${product.priceAfterDiscount || product.price} ج.م\nhttps://riomax.com.eg/product/${product._id || product.id}`,
       });
     } catch (error) {
       console.error(error);
@@ -108,8 +121,9 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Main Image Slider */}
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, { width: width, height: width }]}>
           <FlatList 
+            ref={flatListRef}
             data={product.images}
             horizontal
             pagingEnabled
@@ -119,14 +133,53 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
               const index = Math.round(e.nativeEvent.contentOffset.x / width);
               setActiveImageIndex(index);
             }}
+            onScroll={(e) => {
+               // Smoother tracking for some platforms
+               const index = Math.round(e.nativeEvent.contentOffset.x / width);
+               if (index !== activeImageIndex) {
+                 const scrollX = e.nativeEvent.contentOffset.x;
+                 if (Math.abs(scrollX - index * width) < 5) {
+                   setActiveImageIndex(index);
+                 }
+               }
+            }}
+            scrollEventThrottle={16}
             renderItem={({ item }) => (
               <Image 
                 source={{ uri: item.secure_url }} 
-                style={[styles.mainImage, { backgroundColor: isDark ? colors.card : '#f8fafc' }]} 
+                style={[{ width: width, height: width }, { backgroundColor: isDark ? colors.card : '#f8fafc' }]} 
                 contentFit="contain" 
               />
             )}
           />
+
+          {/* Slider Navigation Arrows */}
+          {product.images && product.images.length > 1 && (
+            <>
+              <TouchableOpacity 
+                style={[styles.sliderArrow, styles.sliderArrowLeft]} 
+                onPress={() => scrollToIndex(activeImageIndex - 1)}
+                disabled={activeImageIndex === 0}
+              >
+                <Ionicons 
+                  name="chevron-back" 
+                  size={20} 
+                  color={activeImageIndex === 0 ? colors.border : Colors.primary} 
+                />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.sliderArrow, styles.sliderArrowRight]} 
+                onPress={() => scrollToIndex(activeImageIndex + 1)}
+                disabled={activeImageIndex === product.images.length - 1}
+              >
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={20} 
+                  color={activeImageIndex === product.images.length - 1 ? colors.border : Colors.primary} 
+                />
+              </TouchableOpacity>
+            </>
+          )}
           
           {/* Pagination Dots */}
           {product.images && product.images.length > 1 && (
@@ -186,7 +239,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
           {/* Pricing */}
           <View style={styles.priceRow}>
-            <Text style={styles.price}>{product.priceAfterDiscount} ج.م</Text>
+            <Text style={styles.price}>{product.priceAfterDiscount || product.price} ج.م</Text>
             {product.discountAmountProduct > 0 && (
               <View style={styles.discountContainer}>
                 <Text style={styles.oldPrice}>{product.price} ج.م</Text>
@@ -220,7 +273,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           {relatedProducts.length > 0 && (
             <>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Text style={[styles.sectionLabel, { color: colors.text }]}>منتجات تنتمي لهذا القسم</Text>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>المنتجات التي تنتمي إلى هذا المنتج</Text>
               <View style={styles.relatedGrid}>
                 {relatedProducts.map(item => (
                   <ProductCard 
@@ -236,7 +289,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
       </ScrollView>
 
       {/* Footer Actions */}
-      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border, width }]}>
         <View style={styles.quantityContainer}>
           <TouchableOpacity 
             onPress={() => setQuantity(q => Math.max(1, q - 1))}
@@ -275,8 +328,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  imageContainer: { width: width, height: width, position: 'relative' },
-  mainImage: { width: width, height: width },
+  imageContainer: { position: 'relative' },
   paginationContainer: {
     position: 'absolute',
     bottom: 15,
@@ -301,12 +353,35 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', 
+    alignItems: 'center', 
     ...(Platform.OS === 'web' 
       ? { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' } as any
       : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }),
     elevation: 3,
+  },
+  sliderArrow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  sliderArrowLeft: {
+    left: 10,
+  },
+  sliderArrowRight: {
+    right: 10,
   },
   backButton: { right: 20 },
   shareButton: { left: 20 },
@@ -347,7 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   footer: { 
-    position: 'absolute', bottom: 0, width: width, height: 90, 
+    position: 'absolute', bottom: 0, height: 90, 
     paddingHorizontal: 20, flexDirection: 'row', 
     alignItems: 'center', gap: 15, borderTopWidth: 1,
     paddingBottom: Platform.OS === 'ios' ? 20 : 0

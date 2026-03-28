@@ -7,6 +7,9 @@ interface NavigationContextType {
   isLogoutModalVisible: boolean;
   openLogoutModal: () => void;
   closeLogoutModal: () => void;
+  isProfileSidebarVisible: boolean;
+  openProfileSidebar: () => void;
+  closeProfileSidebar: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -14,6 +17,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+  const [isProfileSidebarVisible, setIsProfileSidebarVisible] = useState(false);
 
   const openMenu = () => setIsMenuVisible(true);
   const closeMenu = () => setIsMenuVisible(false);
@@ -25,6 +29,9 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const closeLogoutModal = () => setIsLogoutModalVisible(false);
 
+  const openProfileSidebar = () => setIsProfileSidebarVisible(true);
+  const closeProfileSidebar = () => setIsProfileSidebarVisible(false);
+
   return (
     <NavigationContext.Provider 
       value={{ 
@@ -33,7 +40,10 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         closeMenu, 
         isLogoutModalVisible, 
         openLogoutModal, 
-        closeLogoutModal 
+        closeLogoutModal,
+        isProfileSidebarVisible,
+        openProfileSidebar,
+        closeProfileSidebar
       }}
     >
       {children}

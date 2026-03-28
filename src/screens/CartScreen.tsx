@@ -13,6 +13,8 @@ import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+import { AuthGuard } from '../components/AuthGuard';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
 
@@ -20,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 export const CartScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
+  const { isAuthenticated } = useUser();
   const { 
     cartItems, 
     cartCount, 
@@ -55,6 +58,17 @@ export const CartScreen = ({ navigation }: any) => {
       Alert.alert('خطأ', err.message || 'فشل في تحديث الكمية');
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <AuthGuard 
+      title="لم يتم اضافة منتجات بعد" 
+      subtitle="قم بتسجيل الدخول اولا واضف المنتجات"
+    >
+        <View />
+      </AuthGuard>
+    );
+  }
 
   if (isLoading && cartItems.length === 0) {
     return (

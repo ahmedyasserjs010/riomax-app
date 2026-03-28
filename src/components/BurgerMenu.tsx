@@ -38,9 +38,16 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
   const menuItems = [
     { id: 'home', title: 'الرئيسية', icon: 'home-outline', action: () => navigateTo('Home') },
     { id: 'products', title: 'كل المنتجات', icon: 'grid-outline', action: () => navigateTo('Products') },
-    { id: 'profile', title: 'بيانات المستخدم', icon: 'person-outline', action: () => navigateTo('Profile') },
-    { id: 'password', title: 'تغيير كلمة المرور', icon: 'lock-closed-outline', action: () => Alert.alert('قريباً', 'ميزة تغيير كلمة المرور قادمة قريباً.') },
+    { id: 'contact', title: 'تواصل معنا', icon: 'chatbubbles-outline', action: () => navigateTo('Profile', { screen: 'Contact' }) },
+    { id: 'about', title: 'عن ريوماكس', icon: 'information-circle-outline', action: () => navigateTo('Profile', { screen: 'About' }) },
+    { id: 'terms', title: 'الشروط والسياسات', icon: 'shield-outline', action: () => navigateTo('Profile', { screen: 'Terms' }) },
   ];
+
+  if (isAuthenticated) {
+    menuItems.push({ id: 'password', title: 'تغيير كلمة المرور', icon: 'lock-closed-outline', action: () => navigateTo('Profile', { screen: 'ChangePassword' }) });
+  }
+
+  const [isInfoExpanded, setIsInfoExpanded] = React.useState(false);
 
   return (
     <Modal
@@ -58,7 +65,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
           <View style={[styles.header, { backgroundColor: Colors.primary }]}>
             <View style={styles.userSection}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{userData?.name?.charAt(0).toUpperCase() || 'U'}</Text>
+                <Text style={styles.avatarText}>{userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}</Text>
               </View>
               <View>
                 <Text style={styles.userName}>{userData?.name || 'زائر'}</Text>
@@ -85,6 +92,77 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
             <View style={styles.divider} />
 
             <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => navigateTo('Profile', { screen: 'Contact' })}
+            >
+              <Ionicons name="call-outline" size={22} color={Colors.primary} />
+              <Text style={[styles.menuText, { color: colors.text }]}>تواصل معنا</Text>
+            </TouchableOpacity>
+
+            {/* Collapsible Info Section */}
+            <TouchableOpacity 
+              style={[styles.menuItem, { borderBottomWidth: 0 }]} 
+              onPress={() => setIsInfoExpanded(!isInfoExpanded)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
+              <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.menuText, { color: colors.text, fontWeight: '600' }]}>معلومات مهمه عن Riomax</Text>
+                <Ionicons 
+                  name={isInfoExpanded ? "chevron-up" : "chevron-down"} 
+                  size={18} 
+                  color={colors.textMuted} 
+                />
+              </View>
+            </TouchableOpacity>
+
+            {isInfoExpanded && (
+              <View style={styles.expandedContent}>
+                <TouchableOpacity 
+                  style={styles.subMenuItem} 
+                  onPress={() => navigateTo('Profile', { screen: 'Privacy' })}
+                >
+                  <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة الخصوصية</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.subMenuItem} 
+                  onPress={() => navigateTo('Profile', { screen: 'Refund' })}
+                >
+                  <Ionicons name="refresh-circle-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة الاسترداد والإلغاء</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.subMenuItem} 
+                  onPress={() => navigateTo('Profile', { screen: 'Terms' })}
+                >
+                  <Ionicons name="car-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة التوصيل والشحن</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.subMenuItem} 
+                  onPress={() => navigateTo('Profile', { screen: 'QA' })}
+                >
+                  <Ionicons name="help-circle-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.subMenuText, { color: colors.text }]}>الأسئلة الشائعة</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.subMenuItem} 
+                  onPress={() => navigateTo('Profile', { screen: 'About' })}
+                >
+                  <Ionicons name="information-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.subMenuText, { color: colors.text }]}>عن ريوماكس</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity 
               style={styles.menuItem}
               onPress={toggleTheme}
             >
@@ -105,7 +183,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
             ) : (
               <TouchableOpacity 
                 style={styles.menuItem}
-                onPress={() => navigateTo('Login')}
+                onPress={() => navigateTo('Auth', { screen: 'Login' })}
               >
                 <Ionicons name="log-in-outline" size={22} color={Colors.primary} />
                 <Text style={[styles.menuText, { color: Colors.primary, fontWeight: 'bold' }]}>تسجيل الدخول</Text>
@@ -203,5 +281,21 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
+  },
+  expandedContent: {
+    paddingLeft: 20,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 8,
+    marginVertical: 5,
+  },
+  subMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    gap: 12,
+  },
+  subMenuText: {
+    fontSize: 14,
   },
 });

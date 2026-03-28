@@ -90,7 +90,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Price */}
         <View style={styles.priceSection}>
-          <Text style={styles.priceText}>{product.priceAfterDiscount} ج.م</Text>
+          <Text style={styles.priceText}>{product.priceAfterDiscount || product.price} ج.م</Text>
           {product.discountAmountProduct > 0 && (
             <Text style={styles.oldPrice}>{product.price} ج.م</Text>
           )}

@@ -13,12 +13,15 @@ import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { OrderService } from '../services/ProfileServices';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser } from '../context/UserContext';
+import { AuthGuard } from '../components/AuthGuard';
 
 export const InvoicesScreen = () => {
   const { colors } = useTheme();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { isAuthenticated } = useUser();
 
   const fetchInvoices = async () => {
     try {
@@ -33,8 +36,12 @@ export const InvoicesScreen = () => {
   };
 
   useEffect(() => {
-    fetchInvoices();
-  }, []);
+    if (isAuthenticated) {
+      fetchInvoices();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -60,6 +67,17 @@ export const InvoicesScreen = () => {
       default: return status || 'غير معروف';
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+    <AuthGuard 
+      title="لم تقم بعد بتسجيل الدخول" 
+      subtitle="قم بتسجيل الدخول لعرض طلباتك"
+    >
+        <View />
+      </AuthGuard>
+    );
+  }
 
   if (loading && !refreshing) {
     return (

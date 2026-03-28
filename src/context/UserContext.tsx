@@ -7,11 +7,13 @@ import { storage } from '../utils/storage';
 interface UserContextType {
   userToken: string | null;
   userData: User | null;
+  fullProfile: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -19,6 +21,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
+  const [fullProfile, setFullProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const saveAuthData = async (accessToken: string, refreshToken: string) => {
@@ -34,15 +37,28 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: decoded.email,
         role: decoded.role?.toLowerCase(),
       } as User);
+      // Fetch full profile after setting basic auth data
+      await refreshProfile();
     } catch (e) {
       console.error('Token decoding error', e);
+    }
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const response = await apiClient.get('/user/getProfile') as any;
+      if (response.data?.data?.user) {
+        setFullProfile(response.data.data.user);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile', error);
     }
   };
 
   const login = async (payload: LoginPayload) => {
     try {
       const response = await apiClient.post('/auth/login', payload) as any;
-      const { accessToken, refreshToken } = response.data.newCredentials;
+      const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
     } catch (error) {
       throw error;
@@ -52,7 +68,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const googleLogin = async (credential: string) => {
     try {
       const response = await apiClient.post('/auth/social-login-google', { token: credential }) as any;
-      const { accessToken, refreshToken } = response.data.newCredentials;
+      const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
     } catch (error) {
       throw error;
@@ -69,6 +85,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await storage.deleteItem('refreshToken');
       setUserToken(null);
       setUserData(null);
+      setFullProfile(null);
     }
   };
 
@@ -86,6 +103,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: decoded.email,
             role: decoded.role?.toLowerCase(),
           } as User);
+          // Fetch full profile from server
+          refreshProfile();
         }
       } catch (e) {
         console.error('Error loading stored auth', e);
@@ -101,11 +120,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         userToken,
         userData,
+        fullProfile,
         isAuthenticated: !!userToken,
         isLoading,
         login,
         googleLogin,
         logout,
+        refreshProfile,
       }}
     >
       {children}

@@ -29,8 +29,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setIsLoading(true);
     try {
-      const response = await apiClient.get('/cart') as any;
-      const items = response.data?.items || [];
+      const response = await apiClient.get('/cart/getUserCart') as any;
+      const items = response.data?.data?.cart?.items || [];
       setCartItems(items);
       setCartCount(items.reduce((acc: number, item: any) => acc + item.quantity, 0));
     } catch (e) {
@@ -43,7 +43,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToCart = async (productId: string, quantity: number = 1) => {
     if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
-      await apiClient.post('/cart', { productId, quantity });
+      await apiClient.post('/cart/addToCart', { productId, quantity });
       await refreshCart();
     } catch (error) {
       throw error;
@@ -52,7 +52,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeFromCart = async (productId: string) => {
     try {
-      await apiClient.delete(`/cart/${productId}`);
+      await apiClient.delete(`/cart/removeFromCart/${productId}`);
       await refreshCart();
     } catch (error) {
       throw error;
@@ -61,7 +61,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = async () => {
     try {
-      await apiClient.delete('/cart');
+      await apiClient.delete('/cart/clearCart');
       setCartItems([]);
       setCartCount(0);
     } catch (error) {
