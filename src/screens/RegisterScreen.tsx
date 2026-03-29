@@ -16,8 +16,11 @@ import apiClient from '../api/apiClient';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useToast } from '../context/ToastContext';
+
 export const RegisterScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -30,26 +33,26 @@ export const RegisterScreen = ({ navigation }: any) => {
   const handleRegister = async () => {
     const { name, email, phone, password, confirmPassword } = formData;
     if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات');
+      showToast('يرجى إكمال جميع البيانات', 'info');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('خطأ', 'كلمتا المرور غير متطابقتين');
+      showToast('كلمتا المرور غير متطابقتين', 'error');
       return;
     }
 
     setLoading(true);
     try {
       await apiClient.post('/auth/register', formData);
-      Alert.alert('نجاح', 'تم إنشاء الحساب بنجاح. يرجى تأكيد بريدك الإلكتروني من خلال الرمز المرسل إليك.', [{
-        text: 'حسناً', onPress: () => navigation.navigate('ConfirmEmail', { email: formData.email })
-      }]);
+      showToast('تم إنشاء الحساب بنجاح!', 'success');
+      navigation.navigate('ConfirmEmail', { email: formData.email });
     } catch (err: any) {
-      Alert.alert('فشل التسجيل', err.message || 'حدث خطأ أثناء إنشاء الحساب');
+      showToast(err.message || 'فشل إنشاء الحساب', 'error');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView 

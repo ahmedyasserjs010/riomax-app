@@ -15,9 +15,16 @@ import { IProduct, ICategory, ISubCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
 import { FilterBox } from '../components/FilterBox';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useToast } from '../context/ToastContext';
 
 export const ProductsListScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
+  const { addToCart, isInCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
+
   
   // Filter State
   const initialCategory = route.params?.selectedCategoryId || null;
@@ -158,6 +165,25 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
           <ProductCard 
             product={item} 
             onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })} 
+            isInCart={isInCart(item._id || item.id)}
+            isWishlisted={isInWishlist(item._id || item.id)}
+            onAddToCart={async () => {
+                try {
+                    await addToCart(item._id || item.id);
+                    showToast('تمت إضافة المنتج إلى السلة', 'success');
+                } catch (err: any) {
+                    showToast(err.message || 'فشل في الإضافة للسلة', 'error');
+                }
+            }}
+            onToggleWishlist={async () => {
+                try {
+                    await toggleWishlist(item._id || item.id);
+                    const isFav = isInWishlist(item._id || item.id);
+                    showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
+                } catch (err: any) {
+                    showToast('فشل في تعديل المفضلة', 'error');
+                }
+            }}
           />
         )}
         onEndReached={handleLoadMore}

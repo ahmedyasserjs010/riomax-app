@@ -16,9 +16,12 @@ import { useUser } from '../context/UserContext';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useToast } from '../context/ToastContext';
+
 export const LoginScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { login } = useUser();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,22 +29,24 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('خطأ', 'يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      showToast('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'info');
       return;
     }
     setLoading(true);
     try {
       await login({ email, password });
+      showToast('أهلاً بك مجدداً في ريوماكس!', 'success');
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs' }],
       });
     } catch (err: any) {
-      Alert.alert('فشل تسجيل الدخول', err.message || 'تأكد من صحة البيانات والمحاولة مرة أخرى');
+      showToast(err.message || 'فشل تسجيل الدخول، تأكد من البيانات', 'error');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView 

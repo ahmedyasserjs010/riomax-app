@@ -25,12 +25,15 @@ import { ProductCard } from '../components/ProductCard';
 
 
 
+import { useToast } from '../context/ToastContext';
+
 export const ProductDetailScreen = ({ route, navigation }: any) => {
   const { productId } = route.params;
   const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
-  const { addToCart } = useCart();
+  const { addToCart, isInCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
   
   const [product, setProduct] = useState<IProduct | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<IProduct[]>([]);
@@ -79,9 +82,9 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
     setAddingToCart(true);
     try {
       await addToCart(product._id || product.id, quantity);
-      Alert.alert('نجاح', 'تم إضافة المنتج إلى السلة بنجاح');
+      showToast('تم إضافة المنتج إلى السلة بنجاح', 'success');
     } catch (err: any) {
-      Alert.alert('خطأ', err.message || 'فشل في إضافة المنتج للسلة');
+      showToast(err.message || 'فشل في إضافة المنتج للسلة', 'error');
     } finally {
       setAddingToCart(false);
     }
@@ -263,11 +266,15 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           </View>
 
           {/* Description */}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>وصف المنتج</Text>
-          <Text style={[styles.description, { color: colors.text }]}>
-            {product.description || 'لا يوجد وصف متاح لهذا المنتج حالياً.'}
-          </Text>
+          {product.description && product.description.trim() !== '' && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>وصف المنتج</Text>
+              <Text style={[styles.description, { color: colors.text }]}>
+                {product.description}
+              </Text>
+            </>
+          )}
 
           {/* Related Products Section */}
           {relatedProducts.length > 0 && (
@@ -279,12 +286,32 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
                   <ProductCard 
                     key={item._id || item.id} 
                     product={item} 
-                    onPress={() => navigation.push('ProductDetail', { productId: item._id || item.id })} 
+                    onPress={() => navigation.push('ProductDetail', { productId: item._id || item.id })}
+                    isInCart={isInCart(item._id || item.id)}
+                    isWishlisted={isInWishlist(item._id || item.id)}
+                    onAddToCart={async () => {
+                        try {
+                            await addToCart(item._id || item.id);
+                            showToast('تمت إضافة المنتج إلى السلة', 'success');
+                        } catch (err: any) {
+                            showToast(err.message || 'فشل في الإضافة للسلة', 'error');
+                        }
+                    }}
+                    onToggleWishlist={async () => {
+                        try {
+                            await toggleWishlist(item._id || item.id);
+                            const isFav = isInWishlist(item._id || item.id);
+                            showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
+                        } catch (err: any) {
+                            showToast('فشل في تعديل المفضلة', 'error');
+                        }
+                    }}
                   />
                 ))}
               </View>
             </>
           )}
+
         </View>
       </ScrollView>
 
@@ -419,7 +446,8 @@ const styles = StyleSheet.create({
   relatedGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    marginHorizontal: -15, // counteract parent padding
   },
   footer: { 
     position: 'absolute', bottom: 0, height: 90, 

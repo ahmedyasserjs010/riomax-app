@@ -39,8 +39,8 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
     { id: 'home', title: 'الرئيسية', icon: 'home-outline', action: () => navigateTo('Home') },
     { id: 'products', title: 'كل المنتجات', icon: 'grid-outline', action: () => navigateTo('Products') },
     { id: 'contact', title: 'تواصل معنا', icon: 'chatbubbles-outline', action: () => navigateTo('Profile', { screen: 'Contact' }) },
-    { id: 'about', title: 'عن ريوماكس', icon: 'information-circle-outline', action: () => navigateTo('Profile', { screen: 'About' }) },
-    { id: 'terms', title: 'الشروط والسياسات', icon: 'shield-outline', action: () => navigateTo('Profile', { screen: 'Terms' }) },
+    // { id: 'about', title: 'عن ريوماكس', icon: 'information-circle-outline', action: () => navigateTo('Profile', { screen: 'About' }) },
+    // { id: 'terms', title: 'الشروط والسياسات', icon: 'shield-outline', action: () => navigateTo('Profile', { screen: 'Terms' }) },
   ];
 
   if (isAuthenticated) {
@@ -89,15 +89,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
               </TouchableOpacity>
             ))}
 
-            <View style={styles.divider} />
-
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => navigateTo('Profile', { screen: 'Contact' })}
-            >
-              <Ionicons name="call-outline" size={22} color={Colors.primary} />
-              <Text style={[styles.menuText, { color: colors.text }]}>تواصل معنا</Text>
-            </TouchableOpacity>
+    
 
             {/* Collapsible Info Section */}
             <TouchableOpacity 
@@ -160,7 +152,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
               </View>
             )}
 
-            <View style={styles.divider} />
+    
 
             <TouchableOpacity 
               style={styles.menuItem}

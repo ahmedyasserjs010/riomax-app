@@ -8,12 +8,16 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NavigationProvider, useAppNavigation } from './src/context/NavigationContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 
+import { ToastProvider } from './src/context/ToastContext';
+import { Toast } from './src/components/Toast';
+
 const MainAppContent = () => {
   const { theme } = useTheme();
   
   return (
     <>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      <Toast />
       <AppNavigator />
     </>
   );
@@ -24,15 +28,18 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <UserProvider>
         <ThemeProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <NavigationProvider>
-                <MainAppContent />
-              </NavigationProvider>
-            </WishlistProvider>
-          </CartProvider>
+          <ToastProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <NavigationProvider>
+                  <MainAppContent />
+                </NavigationProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </ToastProvider>
         </ThemeProvider>
       </UserProvider>
     </GestureHandlerRootView>
   );
 }
+

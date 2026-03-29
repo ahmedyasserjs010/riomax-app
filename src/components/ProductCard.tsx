@@ -12,6 +12,7 @@ interface ProductCardProps {
   onAddToCart?: () => void;
   onToggleWishlist?: () => void;
   isWishlisted?: boolean;
+  isInCart?: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -24,7 +25,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onPress, 
   onAddToCart, 
   onToggleWishlist, 
-  isWishlisted = false 
+  isWishlisted = false,
+  isInCart = false
 }) => {
   const { colors, isDark } = useTheme();
   
@@ -49,14 +51,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         
         {/* Wishlist Button (Top Left) */}
         <TouchableOpacity 
-          style={styles.wishlistBtn} 
+          style={[styles.wishlistBtn, isWishlisted && styles.wishlistBtnActive]} 
           onPress={onToggleWishlist}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons 
             name={isWishlisted ? "heart" : "heart-outline"} 
             size={20} 
-            color={isWishlisted ? Colors.accent : '#fff'} 
+            color={isWishlisted ? '#fff' : '#fff'} 
           />
         </TouchableOpacity>
 
@@ -109,17 +111,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </View>
 
           <TouchableOpacity 
-            style={[styles.cartBtn, isOutOfStock && styles.cartBtnDisabled]}
+            style={[
+                styles.cartBtn, 
+                isOutOfStock && styles.cartBtnDisabled,
+                isInCart && styles.cartBtnActive
+            ]}
             disabled={isOutOfStock}
             onPress={onAddToCart}
           >
-            <Ionicons name="cart-outline" size={20} color="#fff" />
+            <Ionicons name={isInCart ? "checkmark" : "cart-outline"} size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -160,6 +167,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  wishlistBtnActive: {
+    backgroundColor: Colors.accent,
+  },
+  cartBtnActive: {
+    backgroundColor: Colors.success || '#10b981',
   },
   outOfStockBadge: {
     position: 'absolute',

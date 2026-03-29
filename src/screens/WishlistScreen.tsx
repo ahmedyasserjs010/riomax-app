@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
 import { AuthGuard } from '../components/AuthGuard';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,18 +24,30 @@ const { width } = Dimensions.get('window');
 
 export const WishlistScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
-  const { wishlist, toggleWishlist, isLoading } = useWishlist();
-  const { addToCart } = useCart();
+  const { wishlist, toggleWishlist, isLoading, isInWishlist } = useWishlist();
+  const { addToCart, isInCart } = useCart();
   const { isAuthenticated } = useUser();
+  const { showToast } = useToast();
 
   const handleAddToCart = async (product: IProduct) => {
     try {
       await addToCart(product._id || product.id, 1);
-      Alert.alert('نجاح', 'تم إضافة المنتج إلى السلة');
+      showToast('تم إضافة المنتج إلى السلة بنجاح', 'success');
     } catch (err: any) {
-      console.error(err);
+      showToast(err.message || 'فشل في إضافة المنتج للسلة', 'error');
     }
   };
+
+  const handleToggleWishlist = async (productId: string) => {
+    try {
+      await toggleWishlist(productId);
+      const isFav = isInWishlist(productId);
+      showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
+    } catch (err: any) {
+        showToast('فشل في تعديل المفضلة', 'error');
+    }
+  };
+
 
   if (!isAuthenticated) {
     return (
@@ -79,6 +92,7 @@ export const WishlistScreen = ({ navigation }: any) => {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const product = item;
+          const alreadyInCart = isInCart(product._id || product.id);
           return (
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <TouchableOpacity 
@@ -92,30 +106,60 @@ export const WishlistScreen = ({ navigation }: any) => {
                 />
                 <View style={styles.info}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{product.name}</Text>
-                  <Text style={styles.price}>{product.priceAfterDiscount} ج.م</Text>
+                  
+                  <View style={styles.tagsContainer}>
+                    {product.category?.name && (
+                      <View style={styles.tagPill}>
+                        <Text style={styles.tagText} numberOfLines={1}>{product.category.name}</Text>
+                      </View>
+                    )}
+                    {(product.subCategory?.name || product.subCategory) && (
+                      <View style={styles.tagPill}>
+                        <Text style={styles.tagText} numberOfLines={1}>
+                          {typeof product.subCategory === 'object' ? product.subCategory.name : product.subCategory}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>
+                      {product.priceAfterDiscount > 0 ? product.priceAfterDiscount : product.price} ج.م
+                    </Text>
+                    {product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price && (
+                      <Text style={styles.oldPrice}>{product.price} ج.م</Text>
+                    )}
+                  </View>
                 </View>
               </TouchableOpacity>
               
               <View style={[styles.actions, { borderTopColor: colors.border }]}>
                 <TouchableOpacity 
                   style={styles.actionBtn}
-                  onPress={() => toggleWishlist(product._id || product.id)}
+                  onPress={() => handleToggleWishlist(product._id || product.id)}
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.accent} />
                   <Text style={[styles.actionText, { color: Colors.accent }]}>حذف</Text>
                 </TouchableOpacity>
                 <View style={[styles.vDivider, { backgroundColor: colors.border }]} />
                 <TouchableOpacity 
-                  style={styles.actionBtn}
+                  style={[styles.actionBtn, alreadyInCart && { backgroundColor: Colors.success + '20' }]}
                   onPress={() => handleAddToCart(product)}
                 >
-                  <Ionicons name="cart-outline" size={18} color={Colors.primary} />
-                  <Text style={[styles.actionText, { color: Colors.primary }]}>سلة التسوق</Text>
+                  <Ionicons 
+                    name={alreadyInCart ? "checkmark-circle" : "cart-outline"} 
+                    size={18} 
+                    color={alreadyInCart ? Colors.success : Colors.primary} 
+                  />
+                  <Text style={[styles.actionText, { color: alreadyInCart ? Colors.success : Colors.primary }]}>
+                    {alreadyInCart ? 'في السلة' : 'سلة التسوق'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           );
         }}
+
       />
     </View>
   );
@@ -134,8 +178,13 @@ const styles = StyleSheet.create({
   cardContent: { flexDirection: 'row', padding: 12 },
   image: { width: 70, height: 70, borderRadius: 8 },
   info: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  name: { fontSize: 14, fontWeight: '500', textAlign: 'left' },
-  price: { fontSize: 16, fontWeight: 'bold', color: Colors.primary, marginTop: 4 },
+  name: { fontSize: 14, fontWeight: 'bold', textAlign: 'left', marginBottom: 6 },
+  tagsContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 },
+  tagPill: { backgroundColor: '#334155', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  tagText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  price: { fontSize: 16, fontWeight: 'bold', color: Colors.primary },
+  oldPrice: { fontSize: 12, color: '#94a3b8', textDecorationLine: 'line-through' },
   actions: { flexDirection: 'row', borderTopWidth: 1 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 6 },
   actionText: { fontSize: 14, fontWeight: '600' },

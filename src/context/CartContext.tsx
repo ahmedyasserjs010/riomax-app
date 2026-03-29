@@ -9,8 +9,10 @@ interface CartContextType {
   isLoading: boolean;
   refreshCart: () => Promise<void>;
   addToCart: (productId: string, quantity?: number) => Promise<void>;
+  updateCartQuantity: (productId: string, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   clearCart: () => Promise<void>;
+  isInCart: (productId: string) => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -50,6 +52,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateCartQuantity = async (productId: string, quantity: number) => {
+    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
+    try {
+      await apiClient.put('/cart/updateCart', { productId, quantity });
+      await refreshCart();
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const removeFromCart = async (productId: string) => {
     try {
       await apiClient.delete(`/cart/removeFromCart/${productId}`);
@@ -69,6 +81,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const isInCart = useCallback((productId: string) => {
+    return cartItems.some(item => {
+      const prod = item.Products;
+      if (typeof prod === 'string') return prod === productId;
+      return (prod?._id || prod?.id) === productId;
+    });
+  }, [cartItems]);
+
   useEffect(() => {
     refreshCart();
   }, [refreshCart]);
@@ -81,8 +101,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         refreshCart,
         addToCart,
+        updateCartQuantity,
         removeFromCart,
         clearCart,
+        isInCart,
       }}
     >
       {children}

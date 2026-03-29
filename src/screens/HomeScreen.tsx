@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+
 import { 
   View, 
   Text, 
@@ -8,8 +9,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
-  Platform
+  Platform,
+  Animated,
+  ScrollView
 } from 'react-native';
+
 import { Image } from 'expo-image';
 import { Colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
@@ -19,11 +23,139 @@ import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
 import { FilterBox } from '../components/FilterBox';
 import { HeroSlider } from '../components/HeroSlider';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useToast } from '../context/ToastContext';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const InfiniteCategoryScroll = ({ data, onPress, colors }: { data: any[], onPress: (id: string) => void, colors: any }) => {
+  const ITEM_WIDTH = 80;
+  const GAP = 10;
+  const ITEM_SIZE = ITEM_WIDTH + GAP;
+  const setWidth = data.length * ITEM_SIZE;
+  
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
+  const isInteracting = useRef(false);
+  const currentOffset = useRef(setWidth);
+  const scrollTimer = useRef<any>(null);
+
+  // Triple the data for seamless looping
+  const tripledData = useMemo(() => {
+    if (data.length === 0) return [];
+    return [...data, ...data, ...data];
+  }, [data]);
+
+  // Handle Initial Scroll & Auto-Scroll
+  useEffect(() => {
+    if (data.length === 0) return;
+
+    // Initial Scroll to middle set
+    setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: setWidth, animated: false });
+        currentOffset.current = setWidth;
+    }, 100);
+
+    // Auto-scroll logic (slow creep)
+    const interval = setInterval(() => {
+      if (!isInteracting.current && flatListRef.current) {
+        currentOffset.current += 1;
+        flatListRef.current.scrollToOffset({ offset: currentOffset.current, animated: false });
+        
+        if (currentOffset.current >= setWidth * 2) {
+          currentOffset.current = setWidth;
+          flatListRef.current.scrollToOffset({ offset: currentOffset.current, animated: false });
+        }
+      }
+    }, 30);
+
+    return () => clearInterval(interval);
+  }, [data, setWidth]);
+
+  const handleScroll = (event: any) => {
+    const offset = event.nativeEvent.contentOffset.x;
+    currentOffset.current = offset;
+    
+    if (offset >= setWidth * 2) {
+      const newOffset = offset - setWidth;
+      currentOffset.current = newOffset;
+      flatListRef.current?.scrollToOffset({ offset: newOffset, animated: false });
+    } else if (offset <= setWidth / 2) {
+      const newOffset = offset + setWidth;
+      currentOffset.current = newOffset;
+      flatListRef.current?.scrollToOffset({ offset: newOffset, animated: false });
+    }
+  };
+
+  if (data.length === 0) return null;
+
+  const progress = scrollX.interpolate({
+    inputRange: [setWidth, setWidth * 2],
+    outputRange: [0, (SCREEN_WIDTH - 100)],
+    extrapolate: 'clamp'
+  });
+
+  return (
+    <View style={styles.infiniteContainer}>
+      <FlatList
+        ref={flatListRef}
+        data={tripledData}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(_, index) => `cat-${index}`}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: false, listener: handleScroll }
+        )}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={() => {
+            isInteracting.current = true;
+            if (scrollTimer.current) clearTimeout(scrollTimer.current);
+        }}
+        onScrollEndDrag={() => {
+            scrollTimer.current = setTimeout(() => {
+                isInteracting.current = false;
+            }, 3000); // Resume auto-scroll after 3 seconds of inactivity
+        }}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={[styles.categoryCard, { width: ITEM_WIDTH, marginRight: GAP }]} 
+            onPress={() => onPress(item._id)}
+          >
+            <View style={[styles.categoryIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Image source={{ uri: item.image?.secure_url }} style={styles.categoryImage} contentFit="contain" />
+            </View>
+            <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+          </TouchableOpacity>
+        )}
+        style={{ paddingLeft: 16 }}
+      />
+      
+      <View style={[styles.indicatorWrapper, { backgroundColor: colors.border }]}>
+        <Animated.View 
+            style={[
+                styles.indicator, 
+                { 
+                    backgroundColor: Colors.primary,
+                    width: 40,
+                    transform: [{ translateX: progress }]
+                }
+            ]} 
+        />
+      </View>
+    </View>
+  );
+};
+
 
 export const HomeScreen = ({ navigation }: any) => {
+
   const { colors } = useTheme();
+  const { addToCart, isInCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
+
   
   // Data State
   const [sliders, setSliders] = useState<ISlider[]>([]);
@@ -153,23 +285,10 @@ export const HomeScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
       
-      <FlatList
-        data={categories}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item._id || Math.random().toString()}
-        contentContainerStyle={styles.categoryList}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.categoryCard} 
-            onPress={() => navigation.navigate('ProductsList', { selectedCategoryId: item._id })}
-          >
-            <View style={[styles.categoryIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Image source={{ uri: item.image?.secure_url }} style={styles.categoryImage} contentFit="contain" />
-            </View>
-            <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-          </TouchableOpacity>
-        )}
+      <InfiniteCategoryScroll 
+        data={categories} 
+        onPress={(id) => navigation.navigate('ProductsList', { selectedCategoryId: id })}
+        colors={colors}
       />
 
       {/* Latest Products Label */}
@@ -209,6 +328,25 @@ export const HomeScreen = ({ navigation }: any) => {
           <ProductCard 
             product={item} 
             onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })} 
+            isInCart={isInCart(item._id || item.id)}
+            isWishlisted={isInWishlist(item._id || item.id)}
+            onAddToCart={async () => {
+                try {
+                    await addToCart(item._id || item.id);
+                    showToast('تمت إضافة المنتج إلى السلة', 'success');
+                } catch (err: any) {
+                    showToast(err.message || 'فشل في الإضافة للسلة', 'error');
+                }
+            }}
+            onToggleWishlist={async () => {
+                try {
+                    await toggleWishlist(item._id || item.id);
+                    const isFav = isInWishlist(item._id || item.id);
+                    showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
+                } catch (err: any) {
+                    showToast('فشل في تعديل المفضلة', 'error');
+                }
+            }}
           />
         )}
         onEndReached={handleLoadMore}
@@ -236,6 +374,11 @@ export const HomeScreen = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  infiniteContainer: { 
+    height: 100, 
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
   listContent: {
     paddingBottom: 20,
   },
@@ -255,7 +398,7 @@ const styles = StyleSheet.create({
       : { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 }),
     elevation: 3,
   },
-  sliderImage: { width: width - 32, height: 180, borderRadius: 16 },
+  sliderImage: { width: SCREEN_WIDTH - 32, height: 180, borderRadius: 16 },
   sectionHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -265,7 +408,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: 'bold' },
   categoryList: { paddingLeft: 16, paddingBottom: 16 },
-  categoryCard: { alignItems: 'center', marginRight: 20, width: 70 },
+  indicatorWrapper: {
+    height: 4,
+    marginHorizontal: 32,
+    borderRadius: 2,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  indicator: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  categoryCard: { alignItems: 'center', width: 70 },
   categoryIcon: { 
     width: 60, 
     height: 60, 
