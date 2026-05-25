@@ -161,6 +161,36 @@ export const UserProfileScreen = () => {
             )}
           </View>
 
+          {/* Warning Banner */}
+          {(() => {
+            const missing = [
+              !fullProfile?.phone && 'رقم الهاتف',
+              !fullProfile?.governorate && 'المحافظة',
+              !fullProfile?.city && 'المدينة / المنطقة',
+              !fullProfile?.address && 'العنوان بالتفصيل',
+            ].filter(Boolean) as string[];
+
+            if (missing.length === 0 || isEditing) return null;
+
+            return (
+              <View style={[styles.warningBox, { backgroundColor: '#fff5ec', borderColor: '#ffe3cc' }]}>
+                <Ionicons name="warning" size={24} color="#ff7a00" style={{ marginLeft: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.warningTitle, { color: '#b24c00' }]}>أكمل بياناتك لتجربة تسوق أسرع</Text>
+                  <Text style={[styles.warningDesc, { color: '#b24c00' }]}>
+                    البيانات التالية ناقصة في ملفك الشخصي. أضفها الآن لتسهيل وتسريع عملية الشراء والشحن في طلباتك القادمة:
+                  </Text>
+                  {missing.map((field) => (
+                    <View key={field} style={styles.warningItem}>
+                      <View style={[styles.bullet, { backgroundColor: '#ff7a00' }]} />
+                      <Text style={[styles.warningItemText, { color: '#b24c00' }]}>{field}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })()}
+
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>البيانات الشخصية</Text>
             
@@ -294,5 +324,42 @@ const styles = StyleSheet.create({
     marginRight: 8,
     textAlign: 'right',
     flex: 1,
-  }
+  },
+  warningBox: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: 'row-reverse',
+    alignItems: 'flex-start',
+  },
+  warningTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textAlign: 'right',
+  },
+  warningDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+    textAlign: 'right',
+  },
+  warningItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  warningItemText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
 });

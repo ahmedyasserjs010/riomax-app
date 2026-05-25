@@ -68,4 +68,9 @@ export const PublicService = {
     const response = await apiClient.get('/footer-links/get') as any;
     return response.data?.data;
   },
+
+  getGeneralSettings: async () => {
+    const response = await apiClient.get('/generalSettings/get') as any;
+    return response.data?.data;
+  },
 };

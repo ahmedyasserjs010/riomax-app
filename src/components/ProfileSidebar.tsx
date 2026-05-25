@@ -37,6 +37,7 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ isVisible, onClo
   const menuItems = [
     { id: 'cart', title: 'السلة', icon: 'cart-outline', action: () => navigateTo('Cart') },
     { id: 'wishlist', title: 'المفضلة', icon: 'heart-outline', action: () => navigateTo('Wishlist') },
+    { id: 'orders', title: 'طلباتي', icon: 'receipt-outline', action: () => navigateTo('Invoices') },
     { id: 'profile', title: 'بيانات صاحب الحساب', icon: 'person-outline', action: () => navigateTo('UserProfile') },
   ];
 

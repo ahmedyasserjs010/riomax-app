@@ -20,6 +20,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 
 import { IProduct } from '../types';
 import { useToast } from '../context/ToastContext';
+import { PublicService } from '../services/PublicService';
 
 const { width } = Dimensions.get('window');
 
@@ -150,6 +151,25 @@ export const CartScreen = ({ navigation }: any) => {
     refreshCart 
   } = useCart();
 
+  const [vatConfig, setVatConfig] = React.useState({ enabled: false, percentage: 14 });
+
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await PublicService.getGeneralSettings();
+        if (settings) {
+          setVatConfig({
+            enabled: settings.vatEnabled,
+            percentage: settings.vatPercentage || 14
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching settings in CartScreen:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const subtotal = cartItems.reduce((acc, item) => {
     const product = item.Products as IProduct;
     if (!product) return acc;
@@ -157,7 +177,7 @@ export const CartScreen = ({ navigation }: any) => {
     return acc + (price * item.quantity);
   }, 0);
 
-  const vat = subtotal * 0.14;
+  const vat = vatConfig.enabled ? (subtotal * vatConfig.percentage) / 100 : 0;
   const total = subtotal + vat;
 
   const handleUpdateQuantity = async (productId: string, newQty: number) => {
@@ -252,10 +272,12 @@ export const CartScreen = ({ navigation }: any) => {
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>المجموع الفرعي:</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>{subtotal.toLocaleString()} ج.م</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>ضريبة القيمة المضافة (14%):</Text>
-            <Text style={[styles.summaryValue, { color: colors.text }]}>{vat.toLocaleString()} ج.م</Text>
-          </View>
+          {vatConfig.enabled && (
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>ضريبة القيمة المضافة ({vatConfig.percentage}%):</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{vat.toLocaleString()} ج.م</Text>
+            </View>
+          )}
           <View style={[styles.summaryRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }]}>
             <Text style={[styles.totalLabel, { color: colors.text }]}>الإجمالي الكلي:</Text>
             <Text style={[styles.totalValue, { color: Colors.primary }]}>{total.toLocaleString()} ج.م</Text>

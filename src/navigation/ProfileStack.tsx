@@ -2,6 +2,8 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
+import { CheckoutScreen } from '../screens/CheckoutScreen';
+import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { AboutScreen } from '../screens/AboutScreen';
 import { ContactScreen } from '../screens/ContactScreen';
@@ -47,6 +49,8 @@ export const ProfileStack = () => {
       <Stack.Screen name="Refund" component={DynamicPageScreen} initialParams={{ type: 'refund', title: 'سياسة الاسترداد والإلغاء' }} options={{ title: 'الاسترداد والإلغاء' }} />
       <Stack.Screen name="QA" component={QAScreen} options={{ title: 'الأسئلة الشائعة' }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'تغيير كلمة المرور' }} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'إتمام الشراء' }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'تفاصيل المنتج' }} />
     </Stack.Navigator>
   );
 };

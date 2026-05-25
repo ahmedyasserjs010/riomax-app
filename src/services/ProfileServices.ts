@@ -22,5 +22,10 @@ export const OrderService = {
   createOrder: async (payload: any) => {
     const response = await apiClient.post('/orders', payload) as any;
     return response;
+  },
+
+  deleteOrder: async (orderId: string) => {
+    const response = await apiClient.delete(`/orders/${orderId}`) as any;
+    return response.data;
   }
 };

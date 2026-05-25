@@ -121,6 +121,10 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
   const isFavorite = isInWishlist(product._id || product.id);
   const outOfStock = product.mainQuantity === 0;
+  const hasDiscount = product.priceAfterDiscount && product.priceAfterDiscount < product.price;
+  const discountPercentage = hasDiscount
+      ? Math.round(((product.price - product.priceAfterDiscount) / product.price) * 100)
+      : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -135,6 +139,11 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
         {/* Main Image Slider */}
         <View style={[styles.imageContainer, { width: width, height: width * 0.7 }]}>
+          {hasDiscount && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountBadgeText}>خصم {discountPercentage}%</Text>
+            </View>
+          )}
           <FlatList 
             ref={flatListRef}
             data={product.images}
@@ -471,4 +480,24 @@ const styles = StyleSheet.create({
   qtyText: { fontSize: 20, fontWeight: 'bold' },
   addCartBtn: { flex: 1, height: 54, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   addCartText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  discountBadge: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  discountBadgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
 });
