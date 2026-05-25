@@ -14,6 +14,8 @@ import { Colors } from '../theme/colors';
 import { ProductService } from '../services/HomeServices';
 import { IProduct } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +49,8 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Breadcrumbs items={[{ label: name || 'المنتجات' }]} />
+
       <FlatList
         data={products}
         keyExtractor={(item) => item._id || item.id}

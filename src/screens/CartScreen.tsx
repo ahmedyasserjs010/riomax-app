@@ -16,6 +16,8 @@ import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
 import { AuthGuard } from '../components/AuthGuard';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+
 import { IProduct } from '../types';
 import { useToast } from '../context/ToastContext';
 
@@ -225,6 +227,8 @@ export const CartScreen = ({ navigation }: any) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Breadcrumbs items={[{ label: 'سلة المشتريات' }]} />
+
       <FlatList
         data={cartItems}
         keyExtractor={(item) => item._id}

@@ -18,6 +18,8 @@ import { useToast } from '../context/ToastContext';
 import { AuthGuard } from '../components/AuthGuard';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+
 import { IProduct } from '../types';
 
 const { width } = Dimensions.get('window');
@@ -86,6 +88,8 @@ export const WishlistScreen = ({ navigation }: any) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Breadcrumbs items={[{ label: 'المفضلة' }]} />
+
       <FlatList
         data={wishlist}
         keyExtractor={(item) => item._id || item.id}

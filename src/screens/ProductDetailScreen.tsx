@@ -22,6 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { ProductCard } from '../components/ProductCard';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+
 
 
 
@@ -122,9 +124,17 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Breadcrumbs 
+        items={[
+          { label: 'المنتجات', path: 'ProductsList' },
+          { label: product.category?.name || 'قسم', path: 'CategoryProducts', params: { categoryId: product.category?._id || product.category?.id, categoryName: product.category?.name } },
+          { label: product.name }
+        ]} 
+      />
       <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
+
         {/* Main Image Slider */}
-        <View style={[styles.imageContainer, { width: width, height: width }]}>
+        <View style={[styles.imageContainer, { width: width, height: width * 0.7 }]}>
           <FlatList 
             ref={flatListRef}
             data={product.images}
@@ -136,24 +146,24 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
               const index = Math.round(e.nativeEvent.contentOffset.x / width);
               setActiveImageIndex(index);
             }}
-            onScroll={(e) => {
-               // Smoother tracking for some platforms
-               const index = Math.round(e.nativeEvent.contentOffset.x / width);
-               if (index !== activeImageIndex) {
-                 const scrollX = e.nativeEvent.contentOffset.x;
-                 if (Math.abs(scrollX - index * width) < 5) {
-                   setActiveImageIndex(index);
-                 }
-               }
-            }}
+            getItemLayout={(_, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
             scrollEventThrottle={16}
-            renderItem={({ item }) => (
-              <Image 
-                source={{ uri: item.secure_url }} 
-                style={[{ width: width, height: width }, { backgroundColor: isDark ? colors.card : '#f8fafc' }]} 
-                contentFit="contain" 
-              />
-            )}
+            renderItem={({ item }) => {
+              const imageUrl = typeof item === 'string' ? item : (item?.secure_url || item?.url);
+              return (
+                <View style={{ width: width, height: width * 0.7, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? colors.card : '#f8fafc' }}>
+                  <Image 
+                    source={{ uri: imageUrl }} 
+                    style={{ width: width * 0.9, height: width * 0.65 }} 
+                    contentFit="contain" 
+                  />
+                </View>
+              );
+            }}
           />
 
           {/* Slider Navigation Arrows */}
@@ -355,7 +365,8 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  imageContainer: { position: 'relative' },
+  imageContainer: { position: 'relative', overflow: 'hidden' },
+
   paginationContainer: {
     position: 'absolute',
     bottom: 15,
