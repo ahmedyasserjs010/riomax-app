@@ -20,12 +20,20 @@ export const OrderService = {
   },
   
   createOrder: async (payload: any) => {
-    const response = await apiClient.post('/orders', payload) as any;
+    const response = await apiClient.post('/orders', payload) as
+     any;
     return response;
   },
 
   deleteOrder: async (orderId: string) => {
     const response = await apiClient.delete(`/orders/${orderId}`) as any;
-    return response.data;
+    const data = response.data;
+    // Backend successResponse returns { message, data } — no "success" field.
+    // If we reach here (no exception), the request succeeded (2xx status).
+    return {
+      success: true,
+      message: data?.message || 'تمت العملية بنجاح',
+      data,
+    };
   }
 };

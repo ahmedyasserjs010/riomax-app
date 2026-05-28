@@ -102,40 +102,56 @@ export const InvoicesScreen = () => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
+    console.log('[InvoicesScreen] Delete button clicked for orderId:', orderId);
     if (!orderId) {
       showToast('مُعرّف الطلب غير موجود أو غير صالح', 'error');
       return;
     }
 
-    Alert.alert(
-      'تأكيد الإزالة',
-      'هل تريد إزالة هذا الطلب من قائمة فواتيرك؟',
-      [
-        { text: 'إلغاء', style: 'cancel' },
-        { 
-          text: 'إزالة من القائمة', 
-          style: 'destructive', 
-          onPress: async () => {
-            setDeletingId(orderId);
-            try {
-              const response = await OrderService.deleteOrder(orderId);
-              if (response && response.success) {
-                setExpandedOrderId(null);
-                setInvoices(prev => prev.filter(order => (order.id || order._id) !== orderId));
-                showToast(response.message || 'تمت إزالة الفاتورة بنجاح', 'success');
-              } else {
-                showToast(response?.message || 'فشل إزالة الفاتورة', 'error');
-              }
-            } catch (err: any) {
-              const errMsg = err?.data?.message || err.message || 'فشل إزالة الفاتورة';
-              showToast(errMsg, 'error');
-            } finally {
-              setDeletingId(null);
-            }
-          }
-        }
-      ]
-    );
+    // ✅ دعم Web و Native معاً
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (Platform.OS === 'web') {
+        const result = window.confirm('هل تريد إزالة هذا الطلب من قائمة فواتيرك؟');
+        resolve(result);
+      } else {
+        Alert.alert(
+          'تأكيد الإزالة',
+          'هل تريد إزالة هذا الطلب من قائمة فواتيرك؟',
+          [
+            { text: 'إلغاء', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'إزالة من القائمة', style: 'destructive', onPress: () => resolve(true) }
+          ],
+          { onDismiss: () => resolve(false) }
+        );
+      }
+    });
+
+    if (!confirmed) return;
+
+    console.log('[InvoicesScreen] User confirmed deletion for orderId:', orderId);
+    setDeletingId(orderId);
+    showToast('جاري الاتصال بالخادم...', 'info');
+
+    try {
+      console.log('[InvoicesScreen] Calling OrderService.deleteOrder...');
+      const response = await OrderService.deleteOrder(orderId);
+      console.log('[InvoicesScreen] OrderService response:', response);
+
+      if (response && response.success) {
+        setExpandedOrderId(null);
+        setInvoices(prev => prev.filter(order => (order.id || order._id) !== orderId));
+        showToast(response.message || 'تمت إزالة الفاتورة بنجاح', 'success');
+      } else {
+        console.log('[InvoicesScreen] Response indicates failure:', response);
+        showToast(response?.message || 'فشل إزالة الفاتورة', 'error');
+      }
+    } catch (err: any) {
+      console.log('[InvoicesScreen] Caught error in deleteOrder:', err?.message || err);
+      const errMsg = err?.data?.message || err.message || 'فشل إزالة الفاتورة';
+      showToast(errMsg, 'error');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const generateInvoicePDF = async (order: any) => {
