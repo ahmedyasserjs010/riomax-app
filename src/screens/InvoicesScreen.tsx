@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,8 @@ import {
   Linking,
   Alert,
   Platform,
-  Dimensions
+  Dimensions,
+  Animated
 } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -32,6 +33,12 @@ export const InvoicesScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { isAuthenticated } = useUser();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, []);
 
   const fetchInvoices = async () => {
     try {
@@ -109,13 +116,21 @@ export const InvoicesScreen = () => {
           text: 'إزالة من القائمة', 
           style: 'destructive', 
           onPress: async () => {
+            setDeletingId(orderId);
             try {
-              await OrderService.deleteOrder(orderId);
-              showToast('تمت إزالة الفاتورة بنجاح', 'success');
-              fetchInvoices();
+              const response = await OrderService.deleteOrder(orderId);
+              if (response && response.success) {
+                setExpandedOrderId(null);
+                setInvoices(prev => prev.filter(order => (order.id || order._id) !== orderId));
+                showToast(response.message || 'تمت إزالة الفاتورة بنجاح', 'success');
+              } else {
+                showToast(response?.message || 'فشل إزالة الفاتورة', 'error');
+              }
             } catch (err: any) {
-              console.error('[InvoicesScreen] Delete error:', err);
-              showToast(err.message || 'فشل إزالة الفاتورة', 'error');
+              const errMsg = err?.data?.message || err.message || 'فشل إزالة الفاتورة';
+              showToast(errMsg, 'error');
+            } finally {
+              setDeletingId(null);
             }
           }
         }
@@ -237,10 +252,12 @@ export const InvoicesScreen = () => {
 
   const renderTimeline = (status: string) => {
     const steps = [
-      { id: 'pending', label: 'قيد الانتظار', icon: 'time-outline' },
-      { id: 'confirmed', label: 'تم التأكيد', icon: 'checkbox-outline' },
-      { id: 'shipped', label: 'جاري الشحن', icon: 'boat-outline' },
-      { id: 'delivered', label: 'تم التسليم', icon: 'home-outline' }
+      { id: 'pending', title: 'قيد الانتظار', desc: 'نحن في انتظار تأكيد طلبك' },
+      { id: 'confirmed', title: 'تم تأكيد الطلب', desc: 'تم استلام طلبك وتأكيده بنجاح' },
+      { id: 'received', title: 'تم الاستقبال', desc: 'تم استلام الطلب من قبل القسم المختص' },
+      { id: 'processing', title: 'جاري التجهيز', desc: 'نقوم الآن بتجهيز وتغليف طلبك' },
+      { id: 'shipped', title: 'تم الشحن', desc: 'طلبك الآن مع المندوب وفي طريقه إليك' },
+      { id: 'delivered', title: 'تم التسليم', desc: 'نتمنى لك تجربة رائعة مع منتجاتنا!' }
     ];
 
     if (status?.toLowerCase() === 'cancelled' || status?.toLowerCase() === 'canceled') {
@@ -255,55 +272,43 @@ export const InvoicesScreen = () => {
     const statusMap: Record<string, number> = {
       'pending': 0,
       'confirmed': 1,
-      'received': 1,
-      'processing': 1,
-      'shipped': 2,
-      'delivered': 3
+      'received': 2,
+      'processing': 3,
+      'shipped': 4,
+      'delivered': 5
     };
 
     const currentStepIndex = statusMap[status?.toLowerCase()] ?? 0;
+    const currentStep = steps[currentStepIndex] || steps[0];
 
     return (
-      <View style={styles.timelineWrapper}>
-        <View style={styles.timelineContainer}>
+      <View style={[styles.modernTimelineWrapper, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+        <View style={styles.segmentedBarContainer}>
           {steps.map((step, idx) => {
             const isCompleted = idx <= currentStepIndex;
-            const isActive = idx === currentStepIndex;
             return (
-              <View key={step.id} style={styles.timelineStep}>
-                <View style={styles.stepIconContainer}>
-                  <View style={[
-                    styles.stepIconCircle, 
-                    { 
-                      borderColor: isCompleted ? Colors.primary : colors.border,
-                      backgroundColor: isActive ? Colors.primary : isCompleted ? Colors.primary + '20' : colors.background
-                    }
-                  ]}>
-                    <Ionicons 
-                      name={step.icon as any} 
-                      size={12} 
-                      color={isActive ? '#fff' : isCompleted ? Colors.primary : colors.textMuted} 
-                    />
-                  </View>
-                  {idx < steps.length - 1 && (
-                    <View style={[
-                      styles.stepLine, 
-                      { backgroundColor: idx < currentStepIndex ? Colors.primary : colors.border }
-                    ]} />
-                  )}
-                </View>
-                <Text style={[
-                  styles.stepLabel, 
-                  { 
-                    color: isActive ? Colors.primary : isCompleted ? colors.text : colors.textMuted,
-                    fontWeight: isActive ? 'bold' : 'normal'
-                  }
-                ]}>
-                  {step.label}
-                </Text>
-              </View>
+              <View 
+                key={step.id} 
+                style={[
+                  styles.segmentLine,
+                  { backgroundColor: isCompleted ? Colors.primary : colors.border }
+                ]} 
+              />
             );
           })}
+        </View>
+        <View style={styles.modernTimelineContent}>
+          <View style={[styles.modernIconCircle, { backgroundColor: Colors.primary + '15' }]}>
+             <Ionicons name="location-outline" size={24} color={Colors.primary} />
+          </View>
+          <View style={styles.modernTextContainer}>
+            <Text style={[styles.modernTimelineTitle, { color: colors.text }]}>
+              {currentStep.title}
+            </Text>
+            <Text style={[styles.modernTimelineDesc, { color: colors.textMuted }]}>
+              {currentStep.desc}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -438,6 +443,9 @@ export const InvoicesScreen = () => {
     );
   }
 
+  const activeCount = invoices.filter(i => !['delivered','cancelled','canceled'].includes(i.status?.toLowerCase())).length;
+  const deliveredCount = invoices.filter(i => i.status?.toLowerCase() === 'delivered').length;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
@@ -447,64 +455,90 @@ export const InvoicesScreen = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
+        ListHeaderComponent={
+          invoices.length > 0 ? (
+            <Animated.View style={[styles.statsRow, { opacity: fadeAnim }]}>
+              <View style={[styles.statCard, { backgroundColor: Colors.primary + '12', borderColor: Colors.primary + '30' }]}> 
+                <Text style={[styles.statNumber, { color: Colors.primary }]}>{invoices.length}</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>إجمالي</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: Colors.info + '12', borderColor: Colors.info + '30' }]}> 
+                <Text style={[styles.statNumber, { color: Colors.info }]}>{activeCount}</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>نشطة</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: Colors.success + '12', borderColor: Colors.success + '30' }]}> 
+                <Text style={[styles.statNumber, { color: Colors.success }]}>{deliveredCount}</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>مكتملة</Text>
+              </View>
+            </Animated.View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Ionicons name="receipt-outline" size={54} color={Colors.primary} />
+            <View style={[styles.emptyIconOuter]}>
+              <View style={[styles.emptyIconInner, { backgroundColor: Colors.primary + '10' }]}>
+                <Ionicons name="receipt-outline" size={48} color={Colors.primary} />
+              </View>
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>لا توجد فواتير بعد</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              لم تقم بإجراء أي طلبات حتى الآن. يمكنك استكشاف منتجاتنا المميزة والبدء بالتسوق الفوري.
+              لم تقم بإجراء أي طلبات حتى الآن.{"\n"}استكشف منتجاتنا وابدأ التسوق!
             </Text>
           </View>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const isExpanded = expandedOrderId === (item.id || item._id);
           const badgeColor = getStatusColor(item.status);
+          const isDeleting = deletingId === (item.id || item._id);
           return (
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Animated.View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: isDeleting ? 0.5 : 1 }]}>
+              {/* Accent stripe */}
+              <View style={[styles.cardAccent, { backgroundColor: badgeColor }]} />
               <TouchableOpacity 
                 onPress={() => toggleExpand(item.id || item._id)} 
                 activeOpacity={0.9}
                 style={styles.cardHeaderPressable}
+                disabled={isDeleting}
               >
                 <View style={styles.cardHeaderTop}>
                   <View style={styles.invoiceNumberContainer}>
-                    <Text style={[styles.orderId, { color: colors.text }]}>طلب #{item.orderNumber || item.id?.substring(0, 8)}</Text>
+                    <View style={[styles.orderIconCircle, { backgroundColor: Colors.primary + '12' }]}>
+                      <Ionicons name="bag-handle-outline" size={16} color={Colors.primary} />
+                    </View>
+                    <View style={{ marginRight: 10 }}>
+                      <Text style={[styles.orderId, { color: colors.text }]}>#{item.orderNumber || item.id?.substring(0, 8)}</Text>
+                      <Text style={[styles.orderDateSmall, { color: colors.textMuted }]}>{new Date(item.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: badgeColor + '12', borderColor: badgeColor + '40' }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: badgeColor + '15', borderColor: badgeColor + '35' }]}>
                     <View style={[styles.statusDot, { backgroundColor: badgeColor }]} />
                     <Text style={[styles.statusText, { color: badgeColor }]}>{mapStatusText(item.status)}</Text>
                   </View>
                 </View>
                 
-                <View style={[styles.headerDivider, { backgroundColor: colors.border }]} />
-                
-                <View style={styles.cardBodyBrief}>
-                  <View style={styles.briefInfoRow}>
-                    <Text style={[styles.briefValue, { color: colors.text }]}>{new Date(item.createdAt).toLocaleDateString('ar-EG')}</Text>
-                    <View style={styles.briefLabelContainer}>
-                      <Text style={[styles.briefLabel, { color: colors.textMuted }]}>تاريخ الطلب</Text>
-                      <Ionicons name="calendar-outline" size={14} color={colors.textMuted} style={{ marginLeft: 4 }} />
-                    </View>
+                <View style={[styles.cardMetaRow]}>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="cube-outline" size={14} color={colors.textMuted} />
+                    <Text style={[styles.metaText, { color: colors.textMuted }]}>{item.items?.length || 0} منتج</Text>
                   </View>
-
-                  <View style={styles.briefInfoRow}>
-                    <Text style={[styles.briefValue, { color: Colors.primary, fontWeight: 'bold' }]}>{(item.total || 0).toLocaleString()} ج.م</Text>
-                    <View style={styles.briefLabelContainer}>
-                      <Text style={[styles.briefLabel, { color: colors.textMuted }]}>إجمالي الفاتورة</Text>
-                      <Ionicons name="wallet-outline" size={14} color={colors.textMuted} style={{ marginLeft: 4 }} />
-                    </View>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="card-outline" size={14} color={colors.textMuted} />
+                    <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                      {item.paymentMethod === 'cash_on_delivery' ? 'عند الاستلام' : item.paymentMethod === 'visa' ? 'فيزا' : item.paymentMethod === 'instapay' ? 'إنستاباي' : 'فودافون كاش'}
+                    </Text>
+                  </View>
+                  <View style={[styles.totalBadge, { backgroundColor: Colors.primary + '10' }]}>
+                    <Text style={[styles.totalBadgeText, { color: Colors.primary }]}>{(item.total || 0).toLocaleString()} ج.م</Text>
                   </View>
                 </View>
 
                 <View style={styles.expandChevronContainer}>
-                  <Text style={[styles.expandText, { color: colors.textMuted }]}>
-                    {isExpanded ? 'عرض تفاصيل أقل' : 'عرض كامل التفاصيل'}
+                  <Text style={[styles.expandText, { color: Colors.primary }]}>
+                    {isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
                   </Text>
                   <Ionicons 
                     name={isExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
+                    size={14} 
                     color={Colors.primary} 
                     style={{ marginLeft: 4 }}
                   />
@@ -519,11 +553,11 @@ export const InvoicesScreen = () => {
                   onPress={() => Linking.openURL('https://wa.me/201097645386')}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="logo-whatsapp" size={16} color={Colors.success} style={{ marginLeft: 6 }} />
-                  <Text style={styles.supportBtnText}>استفسار أو دعم للطلب عبر الواتساب</Text>
+                  <Ionicons name="logo-whatsapp" size={15} color={Colors.success} style={{ marginLeft: 6 }} />
+                  <Text style={styles.supportBtnText}>دعم عبر الواتساب</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </Animated.View>
           );
         }}
       />
@@ -534,29 +568,41 @@ export const InvoicesScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { padding: 14, paddingBottom: 30 },
-  
-  // Premium Card styles
+  list: { padding: 16, paddingBottom: 40 },
+
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  statNumber: { fontSize: 22, fontWeight: '800' },
+  statLabel: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+  // Card
   card: { 
-    borderRadius: 16, 
-    marginBottom: 16, 
+    borderRadius: 18, 
+    marginBottom: 14, 
     borderWidth: 1, 
     overflow: 'hidden',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      }
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12 },
+      android: { elevation: 3 },
     })
   },
-  cardHeaderPressable: {
-    padding: 16,
+  cardAccent: {
+    height: 3,
+    width: '100%',
   },
+  cardHeaderPressable: { padding: 16 },
   cardHeaderTop: { 
     flexDirection: 'row-reverse', 
     justifyContent: 'space-between', 
@@ -566,7 +612,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
   },
-  orderId: { fontSize: 16, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' },
+  orderIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderId: { fontSize: 15, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' },
+  orderDateSmall: { fontSize: 11, marginTop: 2, fontWeight: '500' },
   statusBadge: { 
     flexDirection: 'row-reverse',
     alignItems: 'center', 
@@ -575,294 +629,150 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 1,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 6,
-  },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  headerDivider: { 
-    height: 1, 
-    marginVertical: 12,
-  },
-  cardBodyBrief: { 
-    flexDirection: 'column', 
-    gap: 8,
-  },
-  briefInfoRow: { 
-    flexDirection: 'row-reverse', 
-    alignItems: 'center', 
-    justifyContent: 'space-between',
-  },
-  briefLabelContainer: {
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginLeft: 6 },
+  statusText: { fontSize: 10, fontWeight: '700' },
+
+  // Card Meta Row
+  cardMetaRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
-  briefLabel: { fontSize: 13 },
-  briefValue: { fontSize: 13, fontWeight: '500' },
-  
+  metaItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: { fontSize: 11, fontWeight: '500' },
+  totalBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  totalBadgeText: { fontSize: 13, fontWeight: '800' },
+
   expandChevronContainer: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
+    marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 0.5,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
-  expandText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  expandText: { fontSize: 12, fontWeight: '600' },
 
   supportBtn: { 
     flexDirection: 'row-reverse', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    padding: 12, 
+    padding: 11, 
     borderTopWidth: 1,
   },
   supportBtnText: { color: Colors.success, fontWeight: '700', fontSize: 12 },
   
-  // Empty State styles
-  empty: { flex: 1, alignItems: 'center', marginTop: 80, paddingHorizontal: 30 },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  // Empty State
+  empty: { flex: 1, alignItems: 'center', marginTop: 100, paddingHorizontal: 30 },
+  emptyIconOuter: {
+    marginBottom: 20,
+  },
+  emptyIconInner: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 2,
-      }
-    })
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 22 },
 
-  // Expanded Container styles
-  expandedContainer: {
-    padding: 16,
-    borderTopWidth: 1,
-    paddingTop: 16,
-  },
-  sectionTitleDetail: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 10,
-    textAlign: 'right',
-  },
+  // Expanded Container
+  expandedContainer: { padding: 16, borderTopWidth: 1, paddingTop: 16 },
+  sectionTitleDetail: { fontSize: 14, fontWeight: '700', marginBottom: 10, textAlign: 'right' },
   
-  // Products wrapper styles
-  productsWrapper: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
+  // Products
+  productsWrapper: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, marginBottom: 16, overflow: 'hidden' },
+  productRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 12, alignItems: 'center' },
+  productInfoRight: { flex: 1, alignItems: 'flex-start', marginRight: 4 },
+  productInfoLeft: { alignItems: 'flex-end' },
+  productNameText: { fontSize: 13, fontWeight: '600', textAlign: 'right', marginBottom: 2 },
+  productQtyText: { fontSize: 11 },
+  productPriceText: { fontSize: 13, fontWeight: '700' },
+
+  // Delivery Info
+  deliveryInfoWrapper: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8, marginBottom: 16 },
+  deliveryRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start' },
+  deliveryLabel: { fontSize: 12, fontWeight: '500' },
+  deliveryValue: { fontSize: 12, fontWeight: '600', flex: 1, textAlign: 'left', paddingLeft: 10 },
+
+  // Financial Summary
+  financialSummary: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8, marginBottom: 16 },
+  summaryRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  summaryLabel: { fontSize: 12 },
+  summaryValue: { fontSize: 12, fontWeight: '600' },
+  dividerLine: { height: 1, marginVertical: 4 },
+  totalAmountLabel: { fontSize: 14, fontWeight: '700' },
+  totalAmountValue: { fontSize: 16, fontWeight: '800' },
+  paymentMethodWrapper: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 8, borderWidth: 1, marginTop: 6 },
+  paymentMethodText: { fontSize: 11, fontWeight: '600', marginRight: 6 },
+
+  // Actions
+  actionsContainer: { flexDirection: 'column', gap: 10, marginTop: 8 },
+  actionBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
+  printBtn: { backgroundColor: Colors.primary },
+  printBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  deleteBtn: { borderWidth: 1.5 },
+  deleteBtnText: { fontWeight: '700', fontSize: 13 },
+
+  // Modern Timeline Styles
+  modernTimelineWrapper: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 14,
   },
-  productRow: {
+  segmentedBarContainer: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    gap: 6,
+    marginBottom: 20,
+  },
+  segmentLine: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+  },
+  modernTimelineContent: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
   },
-  productInfoRight: {
-    flex: 1,
-    alignItems: 'flex-start',
-    marginRight: 4,
-  },
-  productInfoLeft: {
-    alignItems: 'flex-end',
-  },
-  productNameText: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'right',
-    marginBottom: 2,
-  },
-  productQtyText: {
-    fontSize: 11,
-  },
-  productPriceText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  // Delivery Info styles
-  deliveryInfoWrapper: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  deliveryRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  deliveryLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  deliveryValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'left',
-    paddingLeft: 10,
-  },
-
-  // Financial summary styles
-  financialSummary: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  summaryRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+  modernIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 14,
   },
-  summaryLabel: {
-    fontSize: 12,
+  modernTextContainer: {
+    flex: 1,
+    alignItems: 'flex-end', 
   },
-  summaryValue: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dividerLine: {
-    height: 1,
-    marginVertical: 4,
-  },
-  totalAmountLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  totalAmountValue: {
+  modernTimelineTitle: {
     fontSize: 16,
     fontWeight: '800',
+    textAlign: 'right',
+    marginBottom: 4,
   },
-  paymentMethodWrapper: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 6,
-  },
-  paymentMethodText: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginRight: 6,
-  },
-
-  // Actions styles
-  actionsContainer: {
-    flexDirection: 'column',
-    gap: 10,
-    marginTop: 8,
-  },
-  actionBtn: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  printBtn: {
-    backgroundColor: Colors.primary,
-  },
-  printBtnText: {
-    color: '#fff',
-    fontWeight: '700',
+  modernTimelineDesc: {
     fontSize: 13,
+    textAlign: 'right',
+    lineHeight: 18,
   },
-  deleteBtn: {
-    borderWidth: 1,
-  },
-  deleteBtnText: {
-    fontWeight: '700',
-    fontSize: 13,
-  },
-
-  // Timeline styles
-  timelineWrapper: {
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  timelineContainer: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    width: '100%',
-  },
-  timelineStep: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  stepIconContainer: {
-    alignItems: 'center',
-    width: '100%',
-    position: 'relative',
-    height: 20,
-    justifyContent: 'center',
-  },
-  stepIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  stepLine: {
-    height: 1.5,
-    position: 'absolute',
-    left: '50%',
-    width: '100%',
-    top: 9,
-    zIndex: 1,
-  },
-  stepLabel: {
-    fontSize: 9,
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  canceledTimeline: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  canceledText: {
-    fontWeight: '700',
-    fontSize: 13,
-  },
+  canceledTimeline: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 12 },
+  canceledText: { fontWeight: '700', fontSize: 13 },
 });
