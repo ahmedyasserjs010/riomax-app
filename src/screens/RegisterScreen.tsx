@@ -15,6 +15,7 @@ import { useTheme } from '../context/ThemeContext';
 import apiClient from '../api/apiClient';
 import { Colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
 
 import { useToast } from '../context/ToastContext';
 
@@ -149,6 +150,22 @@ export const RegisterScreen = ({ navigation }: any) => {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerBtnText}>إنشاء حساب</Text>}
           </TouchableOpacity>
 
+          <View style={styles.dividerContainer}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          <GoogleAuthButton 
+            isRegister={true}
+            onLoginSuccess={() => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs' }],
+              });
+            }} 
+          />
+
           <View style={styles.loginRow}>
             <Text style={{ color: colors.textMuted }}>لديك حساب بالفعل؟ </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -187,6 +204,9 @@ const styles = StyleSheet.create({
     marginTop: 20
   },
   registerBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 25 },
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { marginHorizontal: 10, fontSize: 14, fontWeight: '600' },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 15 },
   loginLink: { color: Colors.primary, fontWeight: 'bold' },
 });
