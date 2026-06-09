@@ -21,7 +21,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.riomaxx.riomaxapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,8 +35,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "555319d1-87d9-407f-a357-83fe8b21ed87"
+        "projectId": "7327b12d-dd3d-41c3-9a34-ca1736521be7"
       }
-    }
+    },
+    "owner": "riomaxx"
   }
 }
