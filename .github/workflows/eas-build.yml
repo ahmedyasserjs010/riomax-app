@@ -11,21 +11,47 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Install dependencies
         run: npm install
 
+      - name: Run Tests
+        run: npm test --if-present
+
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Login Expo (token required)
-        run: eas whoami
+      - name: Expo Authentication
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build:configure
 
+      # 📱 Android Build
       - name: Build Android
-        run: eas build -p android --non-interactive --profile production
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build -p android --non-interactive --profile production --wait
+
+      # 🍎 iOS Build
+      - name: Build iOS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build -p ios --non-interactive --profile production --wait
+
+      # 🚀 Deploy Android
+      - name: Submit Android
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit -p android --latest --non-interactive
+
+      # 🚀 Deploy iOS
+      - name: Submit iOS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit -p ios --latest --non-interactive
