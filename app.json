@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "riomax-app",
+    "name": "Riomax",
     "slug": "riomax-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -35,7 +35,8 @@
       "expo-secure-store",
       "expo-image",
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      "./plugins/withLocalizedAppName"
     ],
     "extra": {
       "eas": {
