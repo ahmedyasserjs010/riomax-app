@@ -10,7 +10,12 @@ export const useSliders = () => {
     queryKey: ['sliders'],
     queryFn: async () => {
       const res = await SliderService.getSliders();
-      return res.data?.slides || res.data || [];
+      console.log('[useSliders] raw res:', JSON.stringify(res).substring(0, 300));
+      console.log('[useSliders] res.data:', JSON.stringify(res.data).substring(0, 300));
+      console.log('[useSliders] res.data?.slides:', JSON.stringify(res.data?.slides).substring(0, 300));
+      const result = res.data?.slides || res.data || [];
+      console.log('[useSliders] final result length:', Array.isArray(result) ? result.length : 'NOT_ARRAY');
+      return result;
     },
   });
 };
@@ -21,7 +26,11 @@ export const useCategoriesTree = () => {
     queryKey: ['categories', 'tree'],
     queryFn: async () => {
       const res = await CategoryService.getCategoriesWithSub();
-      return res.data || [];
+      console.log('[useCategoriesTree] raw res:', JSON.stringify(res).substring(0, 300));
+      console.log('[useCategoriesTree] res.data:', JSON.stringify(res.data).substring(0, 300));
+      const result = res.data || [];
+      console.log('[useCategoriesTree] final result length:', Array.isArray(result) ? result.length : 'NOT_ARRAY');
+      return result;
     },
   });
 };
@@ -31,7 +40,12 @@ export const useAllCategories = () => {
   return useQuery<ICategory[]>({
     queryKey: ['categories', 'all'],
     queryFn: async () => {
-      return await CategoryService.getAllCategories();
+      const res = await CategoryService.getAllCategories();
+      console.log('[useAllCategories] raw res:', JSON.stringify(res).substring(0, 300));
+      // Fix: unwrap nested data array (API returns { message, data: [...] })
+      const result = res.data || [];
+      console.log('[useAllCategories] final result length:', Array.isArray(result) ? result.length : 'NOT_ARRAY');
+      return result;
     },
   });
 };

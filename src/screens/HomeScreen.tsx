@@ -185,6 +185,12 @@ export const HomeScreen = ({ navigation }: any) => {
   const totalProducts = productsData?.pagination?.totalCount || 0;
   const totalPages = productsData?.pagination?.totalPages || 1;
 
+  // Diagnostic logging - remove after debugging
+  console.log('[HomeScreen] slidersData:', JSON.stringify(slidersData)?.substring(0, 200));
+  console.log('[HomeScreen] sliders array length:', sliders.length);
+  console.log('[HomeScreen] categoriesData:', JSON.stringify(categoriesData)?.substring(0, 200));
+  console.log('[HomeScreen] categories array length:', categories.length);
+
   const loading = slidersLoading || categoriesLoading || (page === 1 && productsLoading);
   const fetchingMore = page > 1 && productsFetching;
 
