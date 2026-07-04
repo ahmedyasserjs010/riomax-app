@@ -16,7 +16,7 @@ import {
 import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { ProductService } from '../services/HomeServices';
+import { useProductDetail, useProducts } from '../hooks/useApi';
 import { IProduct } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
@@ -37,13 +37,27 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
   
-  const [product, setProduct] = useState<IProduct | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<IProduct[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const flatListRef = React.useRef<FlatList>(null);
+
+  // Queries
+  const { data: product, isLoading: productLoading } = useProductDetail(productId);
+
+  const categoryId = product?.category?._id || product?.category?.id;
+  const { data: relatedProductsData, isLoading: relatedLoading } = useProducts(
+    categoryId ? { categoryId, limit: 10 } : {}
+  );
+
+  const relatedProducts = React.useMemo(() => {
+    if (!relatedProductsData || !product) return [];
+    return relatedProductsData.products.filter(
+      (p: IProduct) => (p._id || p.id) !== (product._id || product.id)
+    );
+  }, [relatedProductsData, product]);
+
+  const loading = productLoading || (!!categoryId && relatedLoading);
 
   const scrollToIndex = (index: number) => {
     if (product?.images && index >= 0 && index < product.images.length) {
@@ -51,33 +65,6 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
       setActiveImageIndex(index);
     }
   };
-
-  useEffect(() => {
-    const fetchProductAndRelated = async () => {
-      try {
-        const res = await ProductService.getProductById(productId);
-        // CRITICAL: API returns { message, data: IProduct } — we must unwrap .data
-        const productData = res.data || res;
-        setProduct(productData);
-
-        // Fetch related products from the same category
-        if (productData.category && (productData.category._id || productData.category.id)) {
-          const catId = productData.category._id || productData.category.id;
-          // IMPORTANT: Backend expects categoryId, not category
-          const relatedRes = await ProductService.getProducts({ categoryId: catId, limit: 10 });
-          const filteredRelated = (relatedRes.data?.products || []).filter(
-            (p: IProduct) => (p._id || p.id) !== (productData._id || productData.id)
-          );
-          setRelatedProducts(filteredRelated);
-        }
-      } catch (err) {
-        console.error('Fetch product error', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProductAndRelated();
-  }, [productId]);
 
   const handleAddToCart = async () => {
     if (!product) return;

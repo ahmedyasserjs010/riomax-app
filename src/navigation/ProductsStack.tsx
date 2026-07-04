@@ -1,12 +1,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProductsListScreen } from '../screens/ProductsListScreen';
-import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { useTheme } from '../context/ThemeContext';
 import { TopNavbar } from '../components/TopNavbar';
 import { useAppNavigation } from '../context/NavigationContext';
+import { ProductsStackParamList } from './navigationTypes';
+import { screenTransitions } from './navigationConfig';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<ProductsStackParamList>();
 
 export const ProductsStack = () => {
   const { colors } = useTheme();
@@ -23,10 +24,14 @@ export const ProductsStack = () => {
           />
         ),
         contentStyle: { backgroundColor: colors.background },
+        ...screenTransitions.push,
       })}
     >
-      <Stack.Screen name="ProductsListMain" component={ProductsListScreen} options={{ title: 'كل المنتجات' }} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'تفاصيل المنتج' }} />
+      <Stack.Screen 
+        name="ProductsListMain" 
+        component={ProductsListScreen} 
+        options={{ title: 'كل المنتجات' }} 
+      />
     </Stack.Navigator>
   );
 };

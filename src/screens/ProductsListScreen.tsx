@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { ProductService, CategoryService } from '../services/HomeServices';
+import { useCategoriesTree, useProducts } from '../hooks/useApi';
 import { IProduct, ICategory, ISubCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
@@ -30,105 +30,82 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
   const initialCategory = route.params?.selectedCategoryId || null;
   const initialSearch = route.params?.initialSearch || '';
 
-  const [categories, setCategories] = useState<ICategory[]>([]);
-  const [allCategoriesData, setAllCategoriesData] = useState<any[]>([]);
-  const [products, setProducts] = useState<IProduct[]>([]);
-  
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [subCategories, setSubCategories] = useState<ISubCategory[]>([]);
-  const [totalProducts, setTotalProducts] = useState(0);
-
-  // Pagination State
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchingMore, setFetchingMore] = useState(false);
 
-  // Fetch Category Tree
-  const fetchLayoutData = async () => {
-    try {
-      const catRes = await CategoryService.getCategoriesWithSub();
-      const cats = catRes.data || [];
-      setAllCategoriesData(cats);
-      setCategories(cats);
-    } catch (error) {
-      console.error('Error fetching layout data:', error);
-    }
-  };
+  // Queries
+  const { data: categoriesData, refetch: refetchCategories, isLoading: categoriesLoading } = useCategoriesTree();
 
-  // Fetch Products
-  const fetchProducts = async (currentPage = 1, isLoadMore = false) => {
-    try {
-      if (isLoadMore) setFetchingMore(true);
-      else setLoading(true);
+  const queryParams = useMemo(() => {
+    const params: any = { page, limit: 10 };
+    if (searchQuery.trim() !== '') params.keyword = searchQuery;
+    if (selectedCategory) params.categoryId = selectedCategory;
+    if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
+    return params;
+  }, [page, searchQuery, selectedCategory, selectedSubCategory]);
 
-      const params: any = { page: currentPage, limit: 10 };
-      if (searchQuery.trim() !== '') params.keyword = searchQuery;
-      if (selectedCategory) params.categoryId = selectedCategory;
-      if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
+  const { data: productsData, isLoading: productsLoading, isFetching: productsFetching, refetch: refetchProducts } = useProducts(queryParams);
 
-      const prodRes = await ProductService.getProducts(params);
-      const newProducts = prodRes.data?.products || [];
-      
-      if (isLoadMore) {
-        setProducts(prev => [...prev, ...newProducts]);
+  const categories = categoriesData || [];
+  const totalProducts = productsData?.pagination?.totalCount || 0;
+  const totalPages = productsData?.pagination?.totalPages || 1;
+
+  const loading = categoriesLoading || (page === 1 && productsLoading);
+  const fetchingMore = page > 1 && productsFetching;
+
+  // Sync products when page or query data changes
+  useEffect(() => {
+    if (productsData) {
+      if (page === 1) {
+        setProducts(productsData.products);
       } else {
-        setProducts(newProducts);
+        setProducts(prev => {
+          const existingIds = new Set(prev.map(p => p._id || p.id));
+          const newProds = productsData.products.filter(p => !existingIds.has(p._id || p.id));
+          return [...prev, ...newProds];
+        });
       }
-      
-      setTotalProducts(prodRes.data?.pagination?.totalCount || 0);
-      setTotalPages(prodRes.data?.pagination?.totalPages || 1);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
-      setFetchingMore(false);
-      setRefreshing(false);
     }
-  };
+  }, [productsData, page]);
 
+  // Sync SubCategories when Category changes
   useEffect(() => {
-    fetchLayoutData();
-    fetchProducts(1, false);
-  }, []);
-
-  // Sync SubCategories
-  useEffect(() => {
-    if (selectedCategory) {
-      const cat = allCategoriesData.find(c => c._id === selectedCategory || c.id === selectedCategory);
+    if (selectedCategory && categories.length > 0) {
+      const cat = categories.find(c => c._id === selectedCategory || c.id === selectedCategory);
       setSubCategories(cat?.subCategories || []);
     } else {
       setSubCategories([]);
     }
-  }, [selectedCategory, allCategoriesData]);
+  }, [selectedCategory, categories]);
 
-  // Re-fetch when filters change
+  // Reset page to 1 when filters change
   useEffect(() => {
-    if (loading && products.length === 0) return;
     setPage(1);
-    fetchProducts(1, false);
   }, [selectedCategory, selectedSubCategory]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
     setPage(1);
-    fetchLayoutData();
-    fetchProducts(1, false);
+    await Promise.all([
+      refetchCategories(),
+      refetchProducts(),
+    ]);
+    setRefreshing(false);
   };
 
   const handleSearchSubmit = () => {
     setPage(1);
-    fetchProducts(1, false);
+    refetchProducts();
   };
 
   const handleLoadMore = () => {
-    if (!fetchingMore && page < totalPages && !loading) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchProducts(nextPage, true);
+    if (!productsFetching && page < totalPages && !loading) {
+      setPage(prev => prev + 1);
     }
   };
 

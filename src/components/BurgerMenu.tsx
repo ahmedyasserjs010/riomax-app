@@ -36,11 +36,9 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
   };
 
   const menuItems = [
-    { id: 'home', title: 'الرئيسية', icon: 'home-outline', action: () => navigateTo('Home') },
-    { id: 'products', title: 'كل المنتجات', icon: 'grid-outline', action: () => navigateTo('Products') },
+    { id: 'home', title: 'الرئيسية', icon: 'home-outline', action: () => navigateTo('MainTabs', { screen: 'Home' }) },
+    { id: 'products', title: 'كل المنتجات', icon: 'grid-outline', action: () => navigateTo('MainTabs', { screen: 'Products' }) },
     { id: 'contact', title: 'تواصل معنا', icon: 'chatbubbles-outline', action: () => navigateTo('Profile', { screen: 'Contact' }) },
-    // { id: 'about', title: 'عن ريوماكس', icon: 'information-circle-outline', action: () => navigateTo('Profile', { screen: 'About' }) },
-    // { id: 'terms', title: 'الشروط والسياسات', icon: 'shield-outline', action: () => navigateTo('Profile', { screen: 'Terms' }) },
   ];
 
   if (isAuthenticated) {
@@ -112,7 +110,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
               <View style={styles.expandedContent}>
                 <TouchableOpacity 
                   style={styles.subMenuItem} 
-                  onPress={() => navigateTo('Profile', { screen: 'Privacy' })}
+                  onPress={() => navigateTo('DynamicPage', { type: 'privacy', title: 'سياسة الخصوصية' })}
                 >
                   <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
                   <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة الخصوصية</Text>
@@ -120,7 +118,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
 
                 <TouchableOpacity 
                   style={styles.subMenuItem} 
-                  onPress={() => navigateTo('Profile', { screen: 'Refund' })}
+                  onPress={() => navigateTo('DynamicPage', { type: 'refund', title: 'سياسة الاسترداد والإلغاء' })}
                 >
                   <Ionicons name="refresh-circle-outline" size={20} color={Colors.primary} />
                   <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة الاسترداد والإلغاء</Text>
@@ -128,7 +126,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
 
                 <TouchableOpacity 
                   style={styles.subMenuItem} 
-                  onPress={() => navigateTo('Profile', { screen: 'Terms' })}
+                  onPress={() => navigateTo('DynamicPage', { type: 'terms', title: 'سياسة التوصيل والشحن' })}
                 >
                   <Ionicons name="car-outline" size={20} color={Colors.primary} />
                   <Text style={[styles.subMenuText, { color: colors.text }]}>سياسة التوصيل والشحن</Text>

@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { ProductService } from '../services/HomeServices';
+import { useProducts } from '../hooks/useApi';
 import { IProduct } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -22,22 +22,10 @@ const { width } = Dimensions.get('window');
 export const CategoryProductsScreen = ({ route, navigation }: any) => {
   const { categoryId, name } = route.params;
   const { colors } = useTheme();
-  const [products, setProducts] = useState<IProduct[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await ProductService.getProducts({ category: categoryId, limit: 100 });
-        setProducts(response.data.products);
-      } catch (err) {
-        console.error('Fetch category products error', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, [categoryId]);
+  // Queries
+  const { data: productsData, isLoading: loading } = useProducts({ category: categoryId, limit: 100 });
+  const products = productsData?.products || [];
 
   if (loading) {
     return (

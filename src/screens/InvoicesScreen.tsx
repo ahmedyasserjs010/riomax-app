@@ -18,6 +18,8 @@ import * as Sharing from 'expo-sharing';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { OrderService } from '../services/ProfileServices';
+import { useInvoices } from '../hooks/useApi';
+import { queryClient } from '../api/queryClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
 import { AuthGuard } from '../components/AuthGuard';
@@ -28,41 +30,24 @@ const { width } = Dimensions.get('window');
 export const InvoicesScreen = () => {
   const { colors } = useTheme();
   const { showToast } = useToast();
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const { isAuthenticated } = useUser();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Queries
+  const { data: invoicesData, isLoading: loading, refetch } = useInvoices(isAuthenticated);
+  const invoices = invoicesData || [];
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
 
-  const fetchInvoices = async () => {
-    try {
-      const data = await OrderService.getUserInvoices();
-      setInvoices(data);
-    } catch (err) {
-      console.error('Fetch invoices error', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchInvoices();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchInvoices();
+    await refetch();
+    setRefreshing(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -139,7 +124,7 @@ export const InvoicesScreen = () => {
 
       if (response && response.success) {
         setExpandedOrderId(null);
-        setInvoices(prev => prev.filter(order => (order.id || order._id) !== orderId));
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
         showToast(response.message || 'تمت إزالة الفاتورة بنجاح', 'success');
       } else {
         console.log('[InvoicesScreen] Response indicates failure:', response);

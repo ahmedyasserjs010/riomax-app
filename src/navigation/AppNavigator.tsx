@@ -1,4 +1,6 @@
-import { NavigationContainer } from '@react-navigation/native';
+import React from 'react';
+import { enableScreens, enableFreeze } from 'react-native-screens';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useUser } from '../context/UserContext';
 import { TabNavigator } from './TabNavigator';
@@ -6,18 +8,33 @@ import { AuthStack } from './AuthStack';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
-
 import { useAppNavigation } from '../context/NavigationContext';
+
+// Components
 import { BurgerMenu } from '../components/BurgerMenu';
 import { ProfileSidebar } from '../components/ProfileSidebar';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 
-const RootStack = createNativeStackNavigator();
+// Screens to be shared at Root level
+import { ProductDetailScreen } from '../screens/ProductDetailScreen';
+import { CheckoutScreen } from '../screens/CheckoutScreen';
+import { CartScreen } from '../screens/CartScreen';
+import { WishlistScreen } from '../screens/WishlistScreen';
+import { DynamicPageScreen } from '../screens/DynamicPageScreen';
+
+// Types & Config
+import { RootStackParamList } from './navigationTypes';
+import { linkingConfig, screenTransitions } from './navigationConfig';
+
+// Initialize react-native-screens optimizations
+enableScreens(true);
+enableFreeze(true);
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isLoading, logout } = useUser();
+  const { isLoading } = useUser();
   const { colors } = useTheme();
-  const { isMenuVisible, closeMenu, isLogoutModalVisible, closeLogoutModal, openLogoutModal } = useAppNavigation();
 
   if (isLoading) {
     return (
@@ -28,10 +45,40 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linkingConfig}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainTabs" component={TabNavigator} />
-        <RootStack.Screen name="Auth" component={AuthStack} />
+        <RootStack.Screen 
+          name="Auth" 
+          component={AuthStack} 
+          options={screenTransitions.modal} 
+        />
+        {/* Shared Root Screens */}
+        <RootStack.Screen 
+          name="ProductDetail" 
+          component={ProductDetailScreen} 
+          options={screenTransitions.push} 
+        />
+        <RootStack.Screen 
+          name="Checkout" 
+          component={CheckoutScreen} 
+          options={screenTransitions.push} 
+        />
+        <RootStack.Screen 
+          name="Cart" 
+          component={CartScreen} 
+          options={screenTransitions.push} 
+        />
+        <RootStack.Screen 
+          name="Wishlist" 
+          component={WishlistScreen} 
+          options={screenTransitions.push} 
+        />
+        <RootStack.Screen 
+          name="DynamicPage" 
+          component={DynamicPageScreen} 
+          options={screenTransitions.push} 
+        />
       </RootStack.Navigator>
       <NavigationConsumer />
     </NavigationContainer>
@@ -49,7 +96,7 @@ const NavigationConsumer = () => {
     closeProfileSidebar
   } = useAppNavigation();
   const { logout } = useUser();
-  const navigation = require('@react-navigation/native').useNavigation();
+  const navigation = useNavigation<any>();
 
   return (
     <>

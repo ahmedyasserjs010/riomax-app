@@ -8,45 +8,15 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { PublicService } from '../services/PublicService';
-
-interface DynamicPageScreenProps {
-  route: {
-    params: {
-      type: 'privacy' | 'refund' | 'terms';
-      title: string;
-    };
-  };
-}
+import { usePolicy } from '../hooks/useApi';
 
 export const DynamicPageScreen = ({ route }: any) => {
   const { type, title } = route.params;
   const { colors } = useTheme();
-  const [content, setContent] = useState<string>('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        let data;
-        if (type === 'privacy') {
-          data = await PublicService.getPrivacyPolicy();
-          setContent(data?.policyText || '');
-        } else if (type === 'refund') {
-          data = await PublicService.getRefundPolicy();
-          setContent(data?.policyText || '');
-        } else if (type === 'terms') {
-          data = await PublicService.getTermsOfUse();
-          setContent(data?.termsText || '');
-        }
-      } catch (err) {
-        console.error(`Error fetching ${type} policy:`, err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [type]);
+  // Queries
+  const { data: contentData, isLoading: loading } = usePolicy(type);
+  const content = contentData || '';
 
   if (loading) {
     return (

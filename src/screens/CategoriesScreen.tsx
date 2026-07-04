@@ -12,36 +12,23 @@ import {
 import { Image } from 'expo-image';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { CategoryService } from '../services/HomeServices';
+import { useAllCategories } from '../hooks/useApi';
 import { ICategory } from '../types';
 
 const { width } = Dimensions.get('window');
 
 export const CategoriesScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
-  const [categories, setCategories] = useState<ICategory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchCategories = async () => {
-    try {
-      const data = await CategoryService.getAllCategories();
-      setCategories(data);
-    } catch (err) {
-      console.error('Fetch categories error', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  // Queries
+  const { data: categoriesData, isLoading: loading, refetch } = useAllCategories();
+  const categories = categoriesData || [];
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchCategories();
+    await refetch();
+    setRefreshing(false);
   };
 
   if (loading && !refreshing) {

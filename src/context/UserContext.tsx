@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '../api/queryClient';
 import apiClient from '../api/apiClient';
 import { LoginPayload, User } from '../types';
 import { storage } from '../utils/storage';
@@ -21,8 +23,22 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
-  const [fullProfile, setFullProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use React Query for profile fetching and caching
+  const { data: fullProfile, refetch } = useQuery<User | null>({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/user/getProfile') as any;
+        return response.data?.data?.user || null;
+      } catch (error) {
+        console.error('Error fetching profile in useQuery', error);
+        return null;
+      }
+    },
+    enabled: !!userToken,
+  });
 
   const saveAuthData = async (accessToken: string, refreshToken: string) => {
     await storage.setItem('accessToken', accessToken);
@@ -37,22 +53,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: decoded.email,
         role: decoded.role?.toLowerCase(),
       } as User);
-      // Fetch full profile after setting basic auth data
-      await refreshProfile();
+      
+      // Invalidate and trigger refetch
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }, 50);
     } catch (e) {
       console.error('Token decoding error', e);
     }
   };
 
   const refreshProfile = async () => {
-    try {
-      const response = await apiClient.get('/user/getProfile') as any;
-      if (response.data?.data?.user) {
-        setFullProfile(response.data.data.user);
-      }
-    } catch (error) {
-      console.error('Error refreshing profile', error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['profile'] });
+    await refetch();
   };
 
   const login = async (payload: LoginPayload) => {
@@ -85,7 +98,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await storage.deleteItem('refreshToken');
       setUserToken(null);
       setUserData(null);
-      setFullProfile(null);
+      // Clear React Query cache on logout to prevent data leak
+      queryClient.clear();
     }
   };
 
@@ -103,8 +117,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: decoded.email,
             role: decoded.role?.toLowerCase(),
           } as User);
-          // Fetch full profile from server
-          refreshProfile();
         }
       } catch (e) {
         console.error('Error loading stored auth', e);
@@ -120,7 +132,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         userToken,
         userData,
-        fullProfile,
+        fullProfile: fullProfile || null,
         isAuthenticated: !!userToken,
         isLoading,
         login,
@@ -139,3 +151,4 @@ export const useUser = () => {
   if (!context) throw new Error('useUser must be used within a UserProvider');
   return context;
 };
+

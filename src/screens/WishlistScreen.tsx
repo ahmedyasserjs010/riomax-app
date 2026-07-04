@@ -78,7 +78,7 @@ export const WishlistScreen = ({ navigation }: any) => {
         <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>لم تقم بإضافة أي منتجات للمفضلة بعد.</Text>
         <TouchableOpacity 
           style={styles.browseBtn}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
         >
           <Text style={styles.browseBtnText}>اكتشف المنتجات</Text>
         </TouchableOpacity>

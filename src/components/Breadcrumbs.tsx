@@ -28,7 +28,7 @@ export const Breadcrumbs = ({ items }: BreadcrumbsProps) => {
         style={{ direction: 'rtl' }}
       >
         <TouchableOpacity 
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
           style={styles.item}
         >
           <Ionicons name="home-outline" size={16} color={Colors.primary} />
