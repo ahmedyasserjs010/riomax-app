@@ -18,8 +18,6 @@ import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 // Screens to be shared at Root level
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
-import { CartScreen } from '../screens/CartScreen';
-import { WishlistScreen } from '../screens/WishlistScreen';
 import { DynamicPageScreen } from '../screens/DynamicPageScreen';
 
 // Types & Config
@@ -62,16 +60,6 @@ export const AppNavigator = () => {
         <RootStack.Screen 
           name="Checkout" 
           component={CheckoutScreen} 
-          options={screenTransitions.push} 
-        />
-        <RootStack.Screen 
-          name="Cart" 
-          component={CartScreen} 
-          options={screenTransitions.push} 
-        />
-        <RootStack.Screen 
-          name="Wishlist" 
-          component={WishlistScreen} 
           options={screenTransitions.push} 
         />
         <RootStack.Screen 

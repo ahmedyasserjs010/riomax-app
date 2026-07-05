@@ -31,7 +31,7 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ isVisible, onClo
   const navigateTo = (screen: string, params?: any) => {
     onClose();
     if (screen === 'Cart' || screen === 'Wishlist') {
-      navigation.navigate(screen, params);
+      navigation.navigate('Home', { screen, params });
     } else {
       navigation.navigate('Profile', { screen, params });
     }

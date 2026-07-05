@@ -5,8 +5,6 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   ProductDetail: { productId: string };
   Checkout: undefined;
-  Cart: undefined;
-  Wishlist: undefined;
   DynamicPage: { type: 'terms' | 'privacy' | 'refund'; title: string };
 };
 
@@ -28,6 +26,8 @@ export type HomeStackParamList = {
   Categories: undefined;
   CategoryProducts: { categoryId: string; name: string };
   ProductsList: { selectedCategoryId?: string; keyword?: string };
+  Cart: undefined;
+  Wishlist: undefined;
 };
 
 export type ProductsStackParamList = {

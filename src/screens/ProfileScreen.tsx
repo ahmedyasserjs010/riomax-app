@@ -16,8 +16,8 @@ export const ProfileScreen = ({ navigation }: any) => {
   const { userData } = useUser();
 
   const menuItems = [
-    { id: 'cart', title: 'السلة', icon: 'cart-outline', action: () => navigation.navigate('Cart') },
-    { id: 'wishlist', title: 'المفضلة', icon: 'heart-outline', action: () => navigation.navigate('Wishlist') },
+    { id: 'cart', title: 'السلة', icon: 'cart-outline', action: () => navigation.navigate('Home', { screen: 'Cart' }) },
+    { id: 'wishlist', title: 'المفضلة', icon: 'heart-outline', action: () => navigation.navigate('Home', { screen: 'Wishlist' }) },
     { id: 'orders', title: 'طلباتي', icon: 'receipt-outline', action: () => navigation.navigate('Invoices') },
     { id: 'userProfile', title: 'بيانات المستخدم', icon: 'person-outline', action: () => navigation.navigate('UserProfile') },
   ];

@@ -4,6 +4,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ProductsListScreen } from '../screens/ProductsListScreen';
 import { CategoriesScreen } from '../screens/CategoriesScreen';
 import { CategoryProductsScreen } from '../screens/CategoryProductsScreen';
+import { CartScreen } from '../screens/CartScreen';
+import { WishlistScreen } from '../screens/WishlistScreen';
 import { useTheme } from '../context/ThemeContext';
 import { TopNavbar } from '../components/TopNavbar';
 import { useAppNavigation } from '../context/NavigationContext';
@@ -49,6 +51,16 @@ export const HomeStack = () => {
         name="ProductsList" 
         component={ProductsListScreen} 
         options={{ title: 'البحث والمنتجات' }} 
+      />
+      <Stack.Screen 
+        name="Cart" 
+        component={CartScreen} 
+        options={{ title: 'سلة المشتريات' }} 
+      />
+      <Stack.Screen 
+        name="Wishlist" 
+        component={WishlistScreen} 
+        options={{ title: 'المفضلة' }} 
       />
     </Stack.Navigator>
   );
