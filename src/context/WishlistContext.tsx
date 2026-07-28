@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '../api/queryClient';
 import apiClient from '../api/apiClient';
 import { useUser } from './UserContext';
 import { IProduct } from '../types';
@@ -16,30 +18,28 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useUser();
-  const [wishlist, setWishlist] = useState<IProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Use React Query to fetch and cache user wishlist
+  const { data: wishlistData, isLoading, refetch } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: async () => {
+      const response = await apiClient.get('/wishlist/getUserWishlist') as any;
+      return response.data?.data?.wishlist?.books || [];
+    },
+    enabled: isAuthenticated,
+  });
+
+  const wishlist = isAuthenticated && wishlistData ? wishlistData : [];
 
   const refreshWishlist = useCallback(async () => {
-    if (!isAuthenticated) {
-      setWishlist([]);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await apiClient.get('/wishlist/getUserWishlist') as any;
-      setWishlist(response.data?.data?.wishlist?.books || []);
-    } catch (e) {
-      console.error('Error fetching wishlist', e);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isAuthenticated]);
+    await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+    await refetch();
+  }, [refetch]);
 
   const toggleWishlist = async (productId: string) => {
     if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
-      // Logic from web app: if exists in list, call DELETE /wishlist/:id, else POST /wishlist
-      const exists = wishlist.some(item => (item._id || item.id) === productId);
+      const exists = wishlist.some((item: IProduct) => (item._id || item.id) === productId);
       if (exists) {
         await apiClient.delete(`/wishlist/removeFromWishlist/${productId}`);
       } else {
@@ -52,19 +52,15 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const isInWishlist = (productId: string) => {
-    return wishlist.some(item => (item._id || item.id) === productId);
+    return wishlist.some((item: IProduct) => (item._id || item.id) === productId);
   };
-
-  useEffect(() => {
-    refreshWishlist();
-  }, [refreshWishlist]);
 
   return (
     <WishlistContext.Provider
       value={{
         wishlist,
         wishlistCount: wishlist.length,
-        isLoading,
+        isLoading: isAuthenticated ? isLoading : false,
         toggleWishlist,
         isInWishlist,
         refreshWishlist,
@@ -80,3 +76,4 @@ export const useWishlist = () => {
   if (!context) throw new Error('useWishlist must be used within a WishlistProvider');
   return context;
 };
+

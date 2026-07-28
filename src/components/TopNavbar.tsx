@@ -31,7 +31,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ title = 'ريوماكس', 
         </TouchableOpacity>
 
         <TouchableOpacity 
-          onPress={() => navigation.navigate('Home')} 
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })} 
           style={styles.titleContainer}
         >
           <Text style={[styles.title, { color: Colors.primary }]}>{title}</Text>
@@ -46,14 +46,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ title = 'ريوماكس', 
           </TouchableOpacity>
 
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Profile', { screen: 'Wishlist' })} 
+            onPress={() => navigation.navigate('Home', { screen: 'Wishlist' })} 
             style={styles.iconButton}
           >
             <Ionicons name="heart-outline" size={24} color={colors.text} />
           </TouchableOpacity>
           
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Profile', { screen: 'Cart' })} 
+            onPress={() => navigation.navigate('Home', { screen: 'Cart' })} 
             style={styles.iconButton}
           >
             <View>

@@ -20,7 +20,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 
 import { IProduct } from '../types';
 import { useToast } from '../context/ToastContext';
-import { PublicService } from '../services/PublicService';
+import { useGeneralSettings } from '../hooks/useApi';
 
 const { width } = Dimensions.get('window');
 
@@ -151,24 +151,14 @@ export const CartScreen = ({ navigation }: any) => {
     refreshCart 
   } = useCart();
 
-  const [vatConfig, setVatConfig] = React.useState({ enabled: false, percentage: 14 });
+  const { data: settings } = useGeneralSettings();
 
-  React.useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const settings = await PublicService.getGeneralSettings();
-        if (settings) {
-          setVatConfig({
-            enabled: settings.vatEnabled,
-            percentage: settings.vatPercentage || 14
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching settings in CartScreen:', err);
-      }
+  const vatConfig = React.useMemo(() => {
+    return {
+      enabled: settings?.vatEnabled || false,
+      percentage: settings?.vatPercentage || 14
     };
-    fetchSettings();
-  }, []);
+  }, [settings]);
 
   const subtotal = cartItems.reduce((acc, item) => {
     const product = item.Products as IProduct;
@@ -237,7 +227,7 @@ export const CartScreen = ({ navigation }: any) => {
         <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>تبدو سلة مشترياتك فارغة حالياً. ابدأ بالتسوق الآن!</Text>
         <TouchableOpacity 
           style={styles.browseBtn}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
         >
           <Text style={styles.browseBtnText}>تصفح المنتجات</Text>
         </TouchableOpacity>
@@ -287,7 +277,7 @@ export const CartScreen = ({ navigation }: any) => {
         <View style={styles.footerActions}>
           <TouchableOpacity 
             style={[styles.continueBtn, { borderColor: Colors.primary }]}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
           >
             <Text style={[styles.continueBtnText, { color: Colors.primary }]}>متابعة التسوق</Text>
           </TouchableOpacity>

@@ -17,7 +17,7 @@ import {
 import { Image } from 'expo-image';
 import { Colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
-import { SliderService, CategoryService, ProductService } from '../services/HomeServices';
+import { useSliders, useCategoriesTree, useProducts } from '../hooks/useApi';
 import { ISlider, ICategory, IProduct, ISubCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
@@ -157,117 +157,92 @@ export const HomeScreen = ({ navigation }: any) => {
   const { showToast } = useToast();
 
   
-  // Data State
-  const [sliders, setSliders] = useState<ISlider[]>([]);
-  const [categories, setCategories] = useState<ICategory[]>([]);
-  const [allCategoriesData, setAllCategoriesData] = useState<any[]>([]);
-  const [products, setProducts] = useState<IProduct[]>([]);
-  
   // Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [subCategories, setSubCategories] = useState<ISubCategory[]>([]);
-  const [totalProducts, setTotalProducts] = useState(0);
-
-  // Pagination State
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchingMore, setFetchingMore] = useState(false);
 
-  // 1. Fetch Initial Layout Data (Sliders & Category Tree)
-  const fetchLayoutData = async () => {
-    try {
-      const [sliderRes, catRes] = await Promise.all([
-        SliderService.getSliders(),
-        CategoryService.getCategoriesWithSub() // Fetch categories with nested subcategories
-      ]);
-      
-      // Fix for Slider API returning { data: { slides: [...] } }
-      setSliders(sliderRes.data?.slides || sliderRes.data || []); 
-      
-      const cats = catRes.data || [];
-      setAllCategoriesData(cats);
-      setCategories(cats);
-    } catch (error) {
-      console.error('Error fetching layout data:', error);
-    }
-  };
+  // Queries
+  const { data: slidersData, refetch: refetchSliders, isLoading: slidersLoading } = useSliders();
+  const { data: categoriesData, refetch: refetchCategories, isLoading: categoriesLoading } = useCategoriesTree();
 
-  // 2. Fetch Products Data (with filters & pagination)
-  const fetchProducts = async (currentPage = 1, isLoadMore = false) => {
-    try {
-      if (isLoadMore) setFetchingMore(true);
-      else setLoading(true);
+  const queryParams = useMemo(() => {
+    const params: any = { page, limit: 10 };
+    if (searchQuery.trim() !== '') params.keyword = searchQuery;
+    if (selectedCategory) params.categoryId = selectedCategory;
+    if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
+    return params;
+  }, [page, searchQuery, selectedCategory, selectedSubCategory]);
 
-      const params: any = { page: currentPage, limit: 10 };
-      if (searchQuery.trim() !== '') params.keyword = searchQuery;
-      if (selectedCategory) params.categoryId = selectedCategory;
-      if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
+  const { data: productsData, isLoading: productsLoading, isFetching: productsFetching, refetch: refetchProducts } = useProducts(queryParams);
 
-      const prodRes = await ProductService.getProducts(params);
-      const newProducts = prodRes.data?.products || [];
-      
-      if (isLoadMore) {
-        setProducts(prev => [...prev, ...newProducts]);
-      } else {
-        setProducts(newProducts);
-      }
-      
-      setTotalProducts(prodRes.data?.pagination?.totalCount || 0);
-      setTotalPages(prodRes.data?.pagination?.totalPages || 1);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
-      setFetchingMore(false);
-      setRefreshing(false);
-    }
-  };
+  const sliders = slidersData || [];
+  const categories = categoriesData || [];
+  const totalProducts = productsData?.pagination?.totalCount || 0;
+  const totalPages = productsData?.pagination?.totalPages || 1;
 
-  // Setup Initial Data
+  // Diagnostic logging - remove after debugging
+  console.log('[HomeScreen] slidersData:', JSON.stringify(slidersData)?.substring(0, 200));
+  console.log('[HomeScreen] sliders array length:', sliders.length);
+  console.log('[HomeScreen] categoriesData:', JSON.stringify(categoriesData)?.substring(0, 200));
+  console.log('[HomeScreen] categories array length:', categories.length);
+
+  const loading = slidersLoading || categoriesLoading || (page === 1 && productsLoading);
+  const fetchingMore = page > 1 && productsFetching;
+
+  // Sync products when page or query data changes
   useEffect(() => {
-    fetchLayoutData();
-    fetchProducts(1, false);
-  }, []);
+    if (productsData) {
+      if (page === 1) {
+        setProducts(productsData.products);
+      } else {
+        setProducts(prev => {
+          const existingIds = new Set(prev.map(p => p._id || p.id));
+          const newProds = productsData.products.filter(p => !existingIds.has(p._id || p.id));
+          return [...prev, ...newProds];
+        });
+      }
+    }
+  }, [productsData, page]);
 
   // Sync SubCategories when Category changes
   useEffect(() => {
-    if (selectedCategory) {
-      const cat = allCategoriesData.find(c => c._id === selectedCategory || c.id === selectedCategory);
+    if (selectedCategory && categories.length > 0) {
+      const cat = categories.find(c => c._id === selectedCategory || c.id === selectedCategory);
       setSubCategories(cat?.subCategories || []);
     } else {
       setSubCategories([]);
     }
-  }, [selectedCategory, allCategoriesData]);
+  }, [selectedCategory, categories]);
 
-  // Re-fetch products when filters change
+  // Reset page to 1 when filters change
   useEffect(() => {
-    // Prevent refetch on initial mount since we already do it
-    if (loading && products.length === 0) return;
     setPage(1);
-    fetchProducts(1, false);
   }, [selectedCategory, selectedSubCategory]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
     setPage(1);
-    fetchLayoutData();
-    fetchProducts(1, false);
+    await Promise.all([
+      refetchSliders(),
+      refetchCategories(),
+      refetchProducts(),
+    ]);
+    setRefreshing(false);
   };
 
   const handleSearchSubmit = () => {
     setPage(1);
-    fetchProducts(1, false);
+    refetchProducts();
   };
 
   const handleLoadMore = () => {
-    if (!fetchingMore && page < totalPages && !loading) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchProducts(nextPage, true);
+    if (!productsFetching && page < totalPages && !loading) {
+      setPage(prev => prev + 1);
     }
   };
 

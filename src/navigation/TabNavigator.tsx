@@ -7,8 +7,9 @@ import { HomeStack } from './HomeStack';
 import { ProductsStack } from './ProductsStack';
 import { ProfileStack } from './ProfileStack';
 import { useAppNavigation } from '../context/NavigationContext';
+import { MainTabParamList } from './navigationTypes';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const TabNavigator = () => {
   const { colors } = useTheme();
@@ -18,10 +19,11 @@ export const TabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          let iconName: any;
+          let iconName: keyof typeof Ionicons.glyphMap;
           if (route.name === 'Home') iconName = 'home';
           else if (route.name === 'Products') iconName = 'grid';
-          else if (route.name === 'Profile') iconName = 'person';
+          else iconName = 'person';
+          
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: Colors.primary,
@@ -36,8 +38,16 @@ export const TabNavigator = () => {
         headerTintColor: colors.text,
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} options={{ title: 'الرئيسية', headerShown: false }} />
-      <Tab.Screen name="Products" component={ProductsStack} options={{ title: 'كل المنتجات', headerShown: false }} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeStack} 
+        options={{ title: 'الرئيسية', headerShown: false }} 
+      />
+      <Tab.Screen 
+        name="Products" 
+        component={ProductsStack} 
+        options={{ title: 'كل المنتجات', headerShown: false }} 
+      />
       <Tab.Screen 
         name="Profile" 
         component={ProfileStack} 

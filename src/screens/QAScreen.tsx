@@ -9,28 +9,17 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { PublicService, IQuestionAnswer } from '../services/PublicService';
+import { useQA } from '../hooks/useApi';
+import { IQuestionAnswer } from '../services/PublicService';
 import { Ionicons } from '@expo/vector-icons';
 
 export const QAScreen = () => {
   const { colors } = useTheme();
-  const [qaList, setQaList] = useState<IQuestionAnswer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchQA = async () => {
-      try {
-        const data = await PublicService.getAllQA();
-        setQaList(data);
-      } catch (err) {
-        console.error('Error fetching QA:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchQA();
-  }, []);
+  // Queries
+  const { data: qaListData, isLoading: loading } = useQA();
+  const qaList = qaListData || [];
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);

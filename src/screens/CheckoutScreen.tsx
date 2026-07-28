@@ -321,10 +321,17 @@ export const CheckoutScreen = ({ navigation }: any) => {
 
   const finishCheckout = () => {
     navigation.reset({
-      index: 1,
+      index: 0,
       routes: [
-        { name: 'ProfileMain' },
-        { name: 'Invoices' },
+        {
+          name: 'MainTabs',
+          params: {
+            screen: 'Profile',
+            params: {
+              screen: 'Invoices'
+            }
+          }
+        }
       ],
     });
   };
@@ -537,7 +544,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
             أوافق على{' '}
             <Text 
               style={{ color: Colors.primary, fontWeight: 'bold' }}
-              onPress={() => navigation.navigate('Refund')}
+              onPress={() => navigation.navigate('DynamicPage', { type: 'refund', title: 'سياسة الاستبدال والاسترجاع' })}
             >
               سياسة الاستبدال والاسترجاع
             </Text>
