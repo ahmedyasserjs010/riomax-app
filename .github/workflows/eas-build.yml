@@ -16,13 +16,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install EAS CLI
-        run: npm install -g eas-cli
+        run: npm install -g eas-cli@latest
 
       - name: Expo Login
         run: eas whoami
@@ -44,7 +44,7 @@ jobs:
       - name: Submit Android
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit -p android --latest --non-interactive
+        run: eas build --auto-submit
 
       # - name: Submit iOS
       #   env:
