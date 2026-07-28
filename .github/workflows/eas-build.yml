@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -25,28 +26,11 @@ jobs:
         run: npm install -g eas-cli@latest
 
       - name: Expo Login
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas whoami
+
+      - name: Build and Auto Submit Android
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      # 📱 Android Build
-      - name: Build Android
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build -p android --non-interactive --profile production --wait
-
-      # # 🍎 iOS Build
-      # - name: Build iOS
-      #   env:
-      #     EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      #   run: eas build -p ios --non-interactive --profile production --wait
-
-      - name: Submit Android
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --auto-submit
-
-      # - name: Submit iOS
-      #   env:
-      #     EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      #   run: eas submit -p ios --latest --non-interactive
+        run: eas build --platform android --profile production --auto-submit --non-interactive --wait
