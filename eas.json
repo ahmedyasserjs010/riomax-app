@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
     "production": {
       "android": {
@@ -16,6 +19,13 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal"
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "production"
+      }
     }
   }
 }

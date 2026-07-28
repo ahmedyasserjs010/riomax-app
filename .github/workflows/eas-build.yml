@@ -41,10 +41,10 @@ jobs:
       #     EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       #   run: eas build -p ios --non-interactive --profile production --wait
 
-      # - name: Submit Android
-      #   env:
-      #     EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      #   run: eas submit -p android --latest --non-interactive
+      - name: Submit Android
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit -p android --latest --non-interactive
 
       # - name: Submit iOS
       #   env:
