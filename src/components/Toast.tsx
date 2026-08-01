@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useToast } from '../context/ToastContext';
 import { Colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const TOAST_DURATION = 3000;
@@ -23,6 +24,7 @@ export const Toast: React.FC = () => {
   const animatedValue = useRef(new Animated.Value(0)).current;
   const progressValue = useRef(new Animated.Value(1)).current;
   const [isVisible, setIsVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (toast) {
@@ -91,7 +93,7 @@ export const Toast: React.FC = () => {
 
   const translateY = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [-100, Platform.OS === 'ios' ? 60 : 40]
+    outputRange: [-100, Math.max(insets.top + 10, 20)]
   });
 
   const opacity = animatedValue.interpolate({

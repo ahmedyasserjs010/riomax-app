@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, Image, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
@@ -16,10 +17,21 @@ export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: { isReg
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  const redirectUri = makeRedirectUri({
+    scheme: 'riomaxapp',
+  });
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     webClientId: GOOGLE_CLIENT_ID,
+    redirectUri,
   });
+
+  useEffect(() => {
+    if (request) {
+      console.log('📱 Google Auth Redirect URI:', request.redirectUri);
+    }
+  }, [request]);
 
   useEffect(() => {
     if (response?.type === 'success') {

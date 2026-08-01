@@ -9,9 +9,11 @@ import {
   Dimensions,
   ScrollView,
   Platform,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { Colors } from '../theme/colors';
@@ -29,6 +31,7 @@ interface BurgerMenuProps {
 export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navigation, onLogout }) => {
   const { colors, isDark, toggleTheme } = useTheme();
   const { userData, isAuthenticated } = useUser();
+  const insets = useSafeAreaInsets();
 
   const navigateTo = (screen: string, params?: any) => {
     onClose();
@@ -60,7 +63,7 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
         </Pressable>
 
         <View style={[styles.menuContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.header, { backgroundColor: Colors.primary }]}>
+          <View style={[styles.header, { backgroundColor: Colors.primary, paddingTop: insets.top + 20 }]}>
             <View style={styles.userSection}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}</Text>
@@ -181,8 +184,16 @@ export const BurgerMenu: React.FC<BurgerMenuProps> = ({ isVisible, onClose, navi
             )}
           </ScrollView>
 
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.textMuted }]}>RioMax v1.0.0</Text>
+          <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom) }]}>
+            <Text style={[styles.footerText, { color: colors.textMuted, textAlign: 'center' }]}>
+              تم تطوير هذا بواسطة Ahmed Yasser{' '}
+              <Text 
+                style={{ color: Colors.primary, textDecorationLine: 'underline', fontWeight: 'bold' }}
+                onPress={() => Linking.openURL('https://wa.me/201097645386')}
+              >
+                اضغط هنا للتواصل
+              </Text>
+            </Text>
           </View>
         </View>
       </View>
@@ -209,7 +220,6 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',

@@ -14,6 +14,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { useProductDetail, useProducts } from '../hooks/useApi';
@@ -36,6 +37,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
   const { addToCart, isInCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -122,7 +124,10 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           { label: product.name }
         ]} 
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
+      >
 
         {/* Main Image Slider */}
         <View style={[styles.imageContainer, { width: width, height: width * 0.7 }]}>
@@ -205,18 +210,20 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
             </View>
           )}
 
-          {/* Floating Action Buttons */}
+          {/* Back Button */}
           <TouchableOpacity 
-            style={[styles.floatingBtn, styles.backButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)' }]} 
+            style={[styles.floatingBtn, styles.backButton, { backgroundColor: colors.card, top: 20 }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-forward" size={24} color={isDark ? '#fff' : '#000'} />
+            <Ionicons name="arrow-forward" size={24} color={colors.text} />
           </TouchableOpacity>
+
+          {/* Share Button */}
           <TouchableOpacity 
-            style={[styles.floatingBtn, styles.shareButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)' }]} 
+            style={[styles.floatingBtn, styles.shareButton, { backgroundColor: colors.card, top: 20 }]}
             onPress={handleShare}
           >
-            <Ionicons name="share-social-outline" size={20} color={isDark ? '#fff' : '#000'} />
+            <Ionicons name="share-social-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -321,8 +328,8 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
         </View>
       </ScrollView>
 
-      {/* Footer Actions */}
-      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border, width }]}>
+      {/* Fixed Footer */}
+      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom || 10, height: 70 + (insets.bottom || 10) }]}>
         <View style={styles.quantityContainer}>
           <TouchableOpacity 
             onPress={() => setQuantity(q => Math.max(1, q - 1))}
@@ -383,7 +390,6 @@ const styles = StyleSheet.create({
   },
   floatingBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -457,10 +463,10 @@ const styles = StyleSheet.create({
     marginHorizontal: -15, // counteract parent padding
   },
   footer: { 
-    position: 'absolute', bottom: 0, height: 90, 
+    position: 'absolute', bottom: 0, 
     paddingHorizontal: 20, flexDirection: 'row', 
     alignItems: 'center', gap: 15, borderTopWidth: 1,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0
+    width: '100%'
   },
   quantityContainer: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   qtyBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },

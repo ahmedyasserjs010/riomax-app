@@ -12,6 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { ICategory, ISubCategory } from '../types';
@@ -48,6 +49,7 @@ const DropdownSelector = ({
 }) => {
   const { colors, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const selectedName = useMemo(() => {
     if (!value) return placeholder;
@@ -87,7 +89,7 @@ const DropdownSelector = ({
           activeOpacity={1} 
           onPress={() => setModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{label}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -264,7 +266,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     minHeight: height * 0.4,
     maxHeight: height * 0.7,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   modalHeader: {
     flexDirection: 'row',
