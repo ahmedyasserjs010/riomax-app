@@ -37,7 +37,13 @@
       "expo-image",
       "expo-font",
       "expo-sharing",
-      "./plugins/withLocalizedAppName"
+      "./plugins/withLocalizedAppName",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.154055057488-ggm91jkgs2ubqlhr7getnupnkugep2jo"
+        }
+      ]
     ],
     "extra": {
       "eas": {
