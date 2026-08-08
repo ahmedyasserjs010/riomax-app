@@ -10,11 +10,17 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "154055057488-9o6unk3ulc1hsvc893a31ccofjnuc7id.apps.googleusercontent.com"
       }
     },
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "154055057488-tg99pb2pcqce50sjr3u58ibu1jauiq4m.apps.googleusercontent.com"
       }
     },
     "development": {

@@ -9,7 +9,8 @@ import { useTheme } from '../context/ThemeContext';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID = '154055057488-ggm91jkgs2ubqlhr7getnupnkugep2jo.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '154055057488-ggm91jkgs2ubqlhr7getnupnkugep2jo.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '154055057488-tg99pb2pcqce50sjr3u58ibu1jauiq4m.apps.googleusercontent.com';
 
 export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: { isRegister?: boolean, onLoginSuccess: () => void }) => {
   const { colors } = useTheme();
@@ -22,8 +23,9 @@ export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: { isReg
   });
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    webClientId: GOOGLE_CLIENT_ID,
+    clientId: GOOGLE_WEB_CLIENT_ID,
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     redirectUri,
   });
 
