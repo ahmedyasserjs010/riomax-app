@@ -14,6 +14,7 @@ interface UserContextType {
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
+  saveAuthData: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -137,6 +138,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         googleLogin,
+        saveAuthData,
         logout,
         refreshProfile,
       }}
