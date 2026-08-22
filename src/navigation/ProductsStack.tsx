@@ -6,6 +6,7 @@ import { TopNavbar } from '../components/TopNavbar';
 import { useAppNavigation } from '../context/NavigationContext';
 import { ProductsStackParamList } from './navigationTypes';
 import { screenTransitions } from './navigationConfig';
+import { SharedStackScreens } from './SharedStackScreens';
 
 const Stack = createNativeStackNavigator<ProductsStackParamList>();
 
@@ -32,6 +33,8 @@ export const ProductsStack = () => {
         component={ProductsListScreen} 
         options={{ title: 'كل المنتجات' }} 
       />
+      {SharedStackScreens({ Stack })}
     </Stack.Navigator>
   );
 };
+

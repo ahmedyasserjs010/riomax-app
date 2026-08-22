@@ -2,6 +2,7 @@
   "expo": {
     "name": "Riomax",
     "slug": "riomax-app",
+    "scheme": "riomaxapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,7 +37,13 @@
       "expo-image",
       "expo-font",
       "expo-sharing",
-      "./plugins/withLocalizedAppName"
+      "./plugins/withLocalizedAppName",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.154055057488-ggm91jkgs2ubqlhr7getnupnkugep2jo"
+        }
+      ]
     ],
     "extra": {
       "eas": {

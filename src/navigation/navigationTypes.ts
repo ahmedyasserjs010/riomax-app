@@ -1,11 +1,25 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 
-export type RootStackParamList = {
-  MainTabs: NavigatorScreenParams<MainTabParamList>;
-  Auth: NavigatorScreenParams<AuthStackParamList>;
+export type SharedStackParamList = {
   ProductDetail: { productId: string };
   Checkout: undefined;
   DynamicPage: { type: 'terms' | 'privacy' | 'refund'; title: string };
+  Categories: undefined;
+  CategoryProducts: { categoryId: string; name: string };
+  ProductsList: { selectedCategoryId?: string; keyword?: string } | undefined;
+  Cart: undefined;
+  Wishlist: undefined;
+  Invoices: undefined;
+  UserProfile: undefined;
+  About: undefined;
+  Contact: undefined;
+  QA: undefined;
+  ChangePassword: undefined;
+};
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabParamList>;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
 };
 
 export type AuthStackParamList = {
@@ -23,31 +37,21 @@ export type MainTabParamList = {
 
 export type HomeStackParamList = {
   HomeMain: undefined;
-  Categories: undefined;
-  CategoryProducts: { categoryId: string; name: string };
-  ProductsList: { selectedCategoryId?: string; keyword?: string };
-  Cart: undefined;
-  Wishlist: undefined;
-};
+} & SharedStackParamList;
 
 export type ProductsStackParamList = {
   ProductsListMain: { selectedCategoryId?: string; keyword?: string } | undefined;
-};
+} & SharedStackParamList;
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
-  Invoices: undefined;
-  UserProfile: undefined;
-  About: undefined;
-  Contact: undefined;
-  QA: undefined;
-  ChangePassword: undefined;
-};
+} & SharedStackParamList;
 
-// Global type declaration for useNavigation hook (so useNavigation<any>() isn't needed)
+// Global type declaration for useNavigation hook
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}
   }
 }
-export type NavigationPropType<T extends keyof RootStackParamList> = any; // Fallback if direct typing is not needed but allows flexibility
+export type NavigationPropType<T extends keyof RootStackParamList> = any;
+

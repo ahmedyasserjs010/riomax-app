@@ -1,58 +1,69 @@
-import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, Image, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, Image } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import apiClient from '../api/apiClient';
 
-WebBrowser.maybeCompleteAuthSession();
+const WEBSITE_BASE = 'https://riomax.com.eg';
 
-const GOOGLE_CLIENT_ID = '154055057488-ggm91jkgs2ubqlhr7getnupnkugep2jo.apps.googleusercontent.com';
-
-export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: { isRegister?: boolean, onLoginSuccess: () => void }) => {
+export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: {
+  isRegister?: boolean;
+  onLoginSuccess: () => void;
+}) => {
   const { colors } = useTheme();
-  const { googleLogin } = useUser();
+  const { saveAuthData } = useUser();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    webClientId: GOOGLE_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (id_token) {
-        handleSuccess(id_token);
-      }
-    } else if (response?.type === 'error') {
-      showToast('حدث خطأ أثناء الاتصال بجوجل', 'error');
-    }
-  }, [response]);
-
-  const handleSuccess = async (idToken: string) => {
+  const handleGoogleAuth = async () => {
     setLoading(true);
     try {
-      await googleLogin(idToken);
-      showToast(isRegister ? 'تم إنشاء الحساب عبر Google بنجاح!' : 'تم تسجيل الدخول عبر Google بنجاح!', 'success');
-      onLoginSuccess();
+      const page = isRegister ? 'register' : 'login';
+      const websiteUrl = `${WEBSITE_BASE}/${page}?from=app`;
+      const redirectUrl = makeRedirectUri({ scheme: 'riomaxapp' });
+
+      // فتح المتصفح الآمن وانتظار الرابط
+      const result = await WebBrowser.openAuthSessionAsync(websiteUrl, redirectUrl);
+
+      if (result.type === 'success' && result.url) {
+        // استخراج الكود من الرابط riomaxapp://auth-success?code=xxx
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+
+        if (!code) {
+          showToast('فشل الحصول على كود التبادل', 'error');
+          return;
+        }
+
+        // استبدال الكود بالتوكنز الحقيقية عبر API
+        const response = await apiClient.post('/auth/app-exchange', { code }) as any;
+        const { accessToken, refreshToken } = response.data?.data?.newCredentials || {};
+
+        if (accessToken && refreshToken) {
+          await saveAuthData(accessToken, refreshToken);
+          showToast(
+            isRegister ? 'تم إنشاء الحساب بنجاح!' : 'تم تسجيل الدخول بنجاح!',
+            'success'
+          );
+          onLoginSuccess();
+        } else {
+          showToast('فشل الحصول على بيانات الدخول', 'error');
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        // المستخدم أغلق المتصفح يدوياً — لا نعرض خطأ
+      }
     } catch (error: any) {
-      showToast(error.message || 'حدث خطأ أثناء تسجيل الدخول عبر Google', 'error');
+      showToast(error.message || 'حدث خطأ أثناء تسجيل الدخول', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleAuth = async () => {
-    promptAsync();
-  };
-
-
-
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={handleGoogleAuth}
       disabled={loading}
@@ -61,9 +72,9 @@ export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: { isReg
         <ActivityIndicator color={colors.text} />
       ) : (
         <View style={styles.content}>
-          <Image 
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
-            style={styles.icon} 
+          <Image
+            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }}
+            style={styles.icon}
           />
           <Text style={[styles.text, { color: colors.text }]}>
             {isRegister ? 'الاستمرار باستخدام Google' : 'تسجيل الدخول باستخدام Google'}

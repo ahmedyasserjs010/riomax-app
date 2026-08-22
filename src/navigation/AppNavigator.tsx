@@ -15,10 +15,6 @@ import { BurgerMenu } from '../components/BurgerMenu';
 import { ProfileSidebar } from '../components/ProfileSidebar';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 
-// Screens to be shared at Root level
-import { ProductDetailScreen } from '../screens/ProductDetailScreen';
-import { CheckoutScreen } from '../screens/CheckoutScreen';
-import { DynamicPageScreen } from '../screens/DynamicPageScreen';
 
 // Types & Config
 import { RootStackParamList } from './navigationTypes';
@@ -51,22 +47,7 @@ export const AppNavigator = () => {
           component={AuthStack} 
           options={screenTransitions.modal} 
         />
-        {/* Shared Root Screens */}
-        <RootStack.Screen 
-          name="ProductDetail" 
-          component={ProductDetailScreen} 
-          options={screenTransitions.push} 
-        />
-        <RootStack.Screen 
-          name="Checkout" 
-          component={CheckoutScreen} 
-          options={screenTransitions.push} 
-        />
-        <RootStack.Screen 
-          name="DynamicPage" 
-          component={DynamicPageScreen} 
-          options={screenTransitions.push} 
-        />
+
       </RootStack.Navigator>
       <NavigationConsumer />
     </NavigationContainer>

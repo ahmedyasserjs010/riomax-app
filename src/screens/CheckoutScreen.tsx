@@ -13,6 +13,7 @@ import {
   Modal
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { Colors } from '../theme/colors';
@@ -37,6 +38,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
   const { showToast } = useToast();
   const { cartItems, refreshCart, cartCount } = useCart();
   const { userData, fullProfile } = useUser();
+  const insets = useSafeAreaInsets();
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -579,7 +581,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
         }}
       >
         <View style={{ flex: 1 }}>
-          <View style={[styles.webViewHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <View style={[styles.webViewHeader, { backgroundColor: colors.card, borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 15) }]}>
             <TouchableOpacity onPress={() => {
               Alert.alert(
                 'تأكيد الإلغاء',
@@ -780,7 +782,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 15,
-    paddingTop: Platform.OS === 'ios' ? 50 : 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
   },

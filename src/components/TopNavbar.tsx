@@ -4,11 +4,9 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  SafeAreaView, 
-  Platform,
-  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { Colors } from '../theme/colors';
@@ -22,9 +20,10 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({ title = 'ريوماكس', onMenuPress, navigation }) => {
   const { colors, isDark } = useTheme();
   const { cartCount } = useCart();
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.card }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.card, paddingTop: insets.top }]}>
       <View style={[styles.container, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
           <Ionicons name="menu-outline" size={28} color={colors.text} />
@@ -67,13 +66,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ title = 'ريوماكس', 
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    // padding will be added dynamically by insets.top
   },
   container: {
     height: 60,

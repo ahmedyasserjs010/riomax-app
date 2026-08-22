@@ -54,7 +54,7 @@ export const AboutScreen = () => {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/icon.png')}
+            source={require('../../assets/android-icon-foreground.png')}
             style={styles.logo}
             contentFit="contain"
           />
