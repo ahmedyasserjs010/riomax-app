@@ -34,3 +34,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas build --platform android --profile production --auto-submit --non-interactive --wait
+
+      - name: Build and Auto Submit iOS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform ios --profile production --auto-submit --non-interactive --wait  
