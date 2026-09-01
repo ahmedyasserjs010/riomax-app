@@ -51,9 +51,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const isInWishlist = (productId: string) => {
+  const isInWishlist = useCallback((productId: string) => {
     return wishlist.some((item: IProduct) => (item._id || item.id) === productId);
-  };
+  }, [wishlist]);
 
   return (
     <WishlistContext.Provider

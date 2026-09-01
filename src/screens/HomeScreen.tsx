@@ -180,48 +180,59 @@ export const HomeScreen = ({ navigation }: any) => {
 
   const { data: productsData, isLoading: productsLoading, isFetching: productsFetching, refetch: refetchProducts } = useProducts(queryParams);
 
-  const sliders = slidersData || [];
-  const categories = categoriesData || [];
+  // Stabilize array references — prevents new [] on every render when data is undefined
+  const sliders = useMemo(() => slidersData || [], [slidersData]);
+  const categories = useMemo(() => categoriesData || [], [categoriesData]);
   const totalProducts = productsData?.pagination?.totalCount || 0;
   const totalPages = productsData?.pagination?.totalPages || 1;
-
-  // Diagnostic logging - remove after debugging
-  console.log('[HomeScreen] slidersData:', JSON.stringify(slidersData)?.substring(0, 200));
-  console.log('[HomeScreen] sliders array length:', sliders.length);
-  console.log('[HomeScreen] categoriesData:', JSON.stringify(categoriesData)?.substring(0, 200));
-  console.log('[HomeScreen] categories array length:', categories.length);
 
   const loading = slidersLoading || categoriesLoading || (page === 1 && productsLoading);
   const fetchingMore = page > 1 && productsFetching;
 
-  // Sync products when page or query data changes
+  // Sync products when page or query data changes (guarded to prevent redundant updates)
   useEffect(() => {
-    if (productsData) {
+    if (productsData?.products) {
       if (page === 1) {
-        setProducts(productsData.products);
+        setProducts(prev => {
+          const newIds = productsData.products.map((p: IProduct) => p._id || p.id).join(',');
+          const prevIds = prev.map(p => p._id || p.id).join(',');
+          if (newIds === prevIds) return prev; // skip update if unchanged
+          return productsData.products;
+        });
       } else {
         setProducts(prev => {
           const existingIds = new Set(prev.map(p => p._id || p.id));
-          const newProds = productsData.products.filter(p => !existingIds.has(p._id || p.id));
+          const newProds = productsData.products.filter((p: IProduct) => !existingIds.has(p._id || p.id));
+          if (newProds.length === 0) return prev; // no new products, skip update
           return [...prev, ...newProds];
         });
       }
     }
   }, [productsData, page]);
 
-  // Sync SubCategories when Category changes
+  // Sync SubCategories when Category changes (guarded to prevent redundant updates)
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
-      const cat = categories.find(c => c._id === selectedCategory || c.id === selectedCategory);
-      setSubCategories(cat?.subCategories || []);
+      const cat = categories.find((c: ICategory) => c._id === selectedCategory || c.id === selectedCategory);
+      const newSubs = cat?.subCategories || [];
+      setSubCategories(prev => {
+        if (prev.length === newSubs.length && JSON.stringify(prev) === JSON.stringify(newSubs)) return prev;
+        return newSubs;
+      });
     } else {
-      setSubCategories([]);
+      setSubCategories(prev => {
+        if (prev.length === 0) return prev; // already empty, skip update
+        return [];
+      });
     }
   }, [selectedCategory, categories]);
 
-  // Reset page to 1 when filters change
+  // Reset page to 1 when filters change (guarded — if already 1, no state change = no re-render)
   useEffect(() => {
-    setPage(1);
+    setPage(prev => {
+      if (prev === 1) return prev;
+      return 1;
+    });
   }, [selectedCategory, selectedSubCategory]);
 
   const onRefresh = async () => {
@@ -240,14 +251,34 @@ export const HomeScreen = ({ navigation }: any) => {
     refetchProducts();
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (!productsFetching && page < totalPages && !loading) {
       setPage(prev => prev + 1);
     }
-  };
+  }, [productsFetching, page, totalPages, loading]);
 
-  // Render Layout Header (Sliders + Categories + FilterBox)
-  const renderHeader = () => (
+  // Memoized callbacks for ProductCard to prevent re-creating functions every render
+  const handleAddToCart = useCallback(async (product: IProduct) => {
+    try {
+      await addToCart(product._id || product.id);
+      showToast('تمت إضافة المنتج إلى السلة', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'فشل في الإضافة للسلة', 'error');
+    }
+  }, [addToCart, showToast]);
+
+  const handleToggleWishlist = useCallback(async (product: IProduct) => {
+    try {
+      await toggleWishlist(product._id || product.id);
+      const isFav = isInWishlist(product._id || product.id);
+      showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
+    } catch (err: any) {
+      showToast('فشل في تعديل المفضلة', 'error');
+    }
+  }, [toggleWishlist, isInWishlist, showToast]);
+
+  // Render Layout Header (Sliders + Categories + FilterBox) — memoized
+  const renderHeader = useCallback(() => (
     <View>
       {/* Hero Slider */}
       {sliders.length > 0 && <HeroSlider data={sliders} />}
@@ -285,7 +316,7 @@ export const HomeScreen = ({ navigation }: any) => {
         totalProductsCount={totalProducts}
       />
     </View>
-  );
+  ), [sliders, categories, colors, searchQuery, selectedCategory, subCategories, selectedSubCategory, totalProducts, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -305,23 +336,8 @@ export const HomeScreen = ({ navigation }: any) => {
             onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })} 
             isInCart={isInCart(item._id || item.id)}
             isWishlisted={isInWishlist(item._id || item.id)}
-            onAddToCart={async () => {
-                try {
-                    await addToCart(item._id || item.id);
-                    showToast('تمت إضافة المنتج إلى السلة', 'success');
-                } catch (err: any) {
-                    showToast(err.message || 'فشل في الإضافة للسلة', 'error');
-                }
-            }}
-            onToggleWishlist={async () => {
-                try {
-                    await toggleWishlist(item._id || item.id);
-                    const isFav = isInWishlist(item._id || item.id);
-                    showToast(isFav ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة', 'info');
-                } catch (err: any) {
-                    showToast('فشل في تعديل المفضلة', 'error');
-                }
-            }}
+            onAddToCart={() => handleAddToCart(item)}
+            onToggleWishlist={() => handleToggleWishlist(item)}
           />
         )}
         onEndReached={handleLoadMore}
