@@ -78,24 +78,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Tags / Pills */}
         <View style={styles.tagsContainer}>
-          {product.category?.name && (
+          {Boolean(product.category?.name) ? (
             <View style={styles.tagPill}>
               <Text style={styles.tagText} numberOfLines={1}>{product.category.name}</Text>
             </View>
-          )}
-          {product.subCategory?.name && (
+          ) : null}
+          {Boolean(product.subCategory?.name) ? (
             <View style={styles.tagPill}>
               <Text style={styles.tagText} numberOfLines={1}>{product.subCategory.name}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Price */}
         <View style={styles.priceSection}>
           <Text style={styles.priceText}>{product.priceAfterDiscount || product.price} ج.م</Text>
-          {product.discountAmountProduct > 0 && (
+          {Number(product.discountAmountProduct) > 0 ? (
             <Text style={styles.oldPrice}>{product.price} ج.م</Text>
-          )}
+          ) : null}
         </View>
 
         {/* Stock & Cart Button Row */}

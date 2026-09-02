@@ -281,7 +281,7 @@ export const HomeScreen = ({ navigation }: any) => {
   const renderHeader = useCallback(() => (
     <View>
       {/* Hero Slider */}
-      {sliders.length > 0 && <HeroSlider data={sliders} />}
+      {sliders.length > 0 ? <HeroSlider data={sliders} /> : null}
 
       {/* Special Categories Mini-Grid */}
       <View style={styles.sectionHeader}>
