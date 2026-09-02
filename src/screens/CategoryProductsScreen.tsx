@@ -64,9 +64,9 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
               <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
               <View style={styles.priceContainer}>
                 <Text style={styles.price}>{item.priceAfterDiscount} ج.م</Text>
-                {item.discountAmountProduct > 0 && (
+                {Number(item.discountAmountProduct) > 0 ? (
                   <Text style={styles.oldPrice}>{item.price} ج.م</Text>
-                )}
+                ) : null}
               </View>
             </View>
           </TouchableOpacity>

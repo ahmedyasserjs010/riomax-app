@@ -117,30 +117,30 @@ export const ContactScreen = () => {
         <View style={styles.socialSection}>
           <Text style={[styles.socialMainTitle, { color: colors.text }]}>تابعنا على منصات التواصل الاجتماعي</Text>
           <View style={styles.socialButtons}>
-            {(footerData?.facebookUrl || DEFAULT_DATA.facebook) && (
+            {Boolean(footerData?.facebookUrl || DEFAULT_DATA.facebook) ? (
               <TouchableOpacity 
                 style={[styles.socialBtn, { backgroundColor: '#1877F2' }]}
                 onPress={() => Linking.openURL(footerData?.facebookUrl || DEFAULT_DATA.facebook)}
               >
                 <Ionicons name="logo-facebook" size={20} color="#fff" />
               </TouchableOpacity>
-            )}
-            {(footerData?.instagramUrl || DEFAULT_DATA.instagram) && (
+            ) : null}
+            {Boolean(footerData?.instagramUrl || DEFAULT_DATA.instagram) ? (
               <TouchableOpacity 
                 style={[styles.socialBtn, { backgroundColor: '#E4405F' }]}
                 onPress={() => Linking.openURL(footerData?.instagramUrl || DEFAULT_DATA.instagram)}
               >
                 <Ionicons name="logo-instagram" size={20} color="#fff" />
               </TouchableOpacity>
-            )}
-            {(footerData?.tiktokUrl || DEFAULT_DATA.tiktok) && (
+            ) : null}
+            {Boolean(footerData?.tiktokUrl || DEFAULT_DATA.tiktok) ? (
               <TouchableOpacity 
                 style={[styles.socialBtn, { backgroundColor: '#000' }]}
                 onPress={() => Linking.openURL(footerData?.tiktokUrl || DEFAULT_DATA.tiktok)}
               >
                 <Ionicons name="logo-tiktok" size={20} color="#fff" />
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         </View>
       </View>

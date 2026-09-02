@@ -369,18 +369,18 @@ export const InvoicesScreen = () => {
             <Text style={[styles.summaryValue, { color: Colors.primary }]}>+{(item.shippingCost || 75).toLocaleString()} ج.م</Text>
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>الشحن:</Text>
           </View>
-          {item.vatPercentage > 0 && (
+          {Number(item.vatPercentage) > 0 ? (
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryValue, { color: colors.text }]}>{(item.vatAmount || 0).toLocaleString()} ج.م</Text>
               <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>ضريبة القيمة المضافة ({item.vatPercentage}%):</Text>
             </View>
-          )}
-          {item.couponDiscount > 0 && (
+          ) : null}
+          {Number(item.couponDiscount) > 0 ? (
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryValue, { color: Colors.success }]}>-{(item.couponDiscount || 0).toLocaleString()} ج.م</Text>
               <Text style={[styles.summaryLabel, { color: Colors.success }]}>خصم الكوبون:</Text>
             </View>
-          )}
+          ) : null}
           <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           <View style={styles.summaryRow}>
             <Text style={[styles.totalAmountValue, { color: Colors.primary }]}>{(item.total || 0).toLocaleString()} ج.م</Text>

@@ -60,25 +60,25 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors }: any) => {
         <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{product.name}</Text>
         
         <View style={styles.tagsContainer}>
-          {product.category?.name && (
+          {Boolean(product.category?.name) ? (
             <View style={styles.tagPill}>
               <Text style={styles.tagText} numberOfLines={1}>{product.category.name}</Text>
             </View>
-          )}
-          {(product.subCategory?.name || product.subCategory) && (
+          ) : null}
+          {Boolean(product.subCategory?.name || product.subCategory) ? (
             <View style={styles.tagPill}>
               <Text style={styles.tagText} numberOfLines={1}>
                 {typeof product.subCategory === 'object' ? product.subCategory.name : product.subCategory}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.priceRow}>
           <Text style={styles.price}>{currentPrice} ج.م</Text>
-          {product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price && (
+          {Boolean(product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price) ? (
             <Text style={styles.oldPrice}>{product.price} ج.م</Text>
-          )}
+          ) : null}
         </View>
         
         <View style={styles.actionRow}>
@@ -115,14 +115,14 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors }: any) => {
               <Ionicons name="add" size={16} color={isAtMaxStock ? colors.textMuted : colors.text} />
             </TouchableOpacity>
 
-            {hasChanged && !isUpdating && (
+            {Boolean(hasChanged && !isUpdating) ? (
               <TouchableOpacity 
                 onPress={handleConfirm}
                 style={styles.confirmBtn}
               >
                 <Ionicons name="checkmark-circle" size={26} color={Colors.success} />
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
           
           <TouchableOpacity onPress={() => onRemove(product._id || product.id)} disabled={isUpdating}>
@@ -130,9 +130,9 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors }: any) => {
           </TouchableOpacity>
         </View>
         
-        {isAtMaxStock && (
+        {isAtMaxStock ? (
           <Text style={styles.stockAlert}>الكمية المتاحة فقط {product.mainQuantity} قطع</Text>
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -262,12 +262,12 @@ export const CartScreen = ({ navigation }: any) => {
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>المجموع الفرعي:</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>{subtotal.toLocaleString()} ج.م</Text>
           </View>
-          {vatConfig.enabled && (
+          {vatConfig.enabled ? (
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>ضريبة القيمة المضافة ({vatConfig.percentage}%):</Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>{vat.toLocaleString()} ج.م</Text>
             </View>
-          )}
+          ) : null}
           <View style={[styles.summaryRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }]}>
             <Text style={[styles.totalLabel, { color: colors.text }]}>الإجمالي الكلي:</Text>
             <Text style={[styles.totalValue, { color: Colors.primary }]}>{total.toLocaleString()} ج.م</Text>

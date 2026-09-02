@@ -131,11 +131,11 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
         {/* Main Image Slider */}
         <View style={[styles.imageContainer, { width: width, height: width * 0.7 }]}>
-          {hasDiscount && (
+          {hasDiscount ? (
             <View style={styles.discountBadge}>
               <Text style={styles.discountBadgeText}>خصم {discountPercentage}%</Text>
             </View>
-          )}
+          ) : null}
           <FlatList 
             ref={flatListRef}
             data={product.images}
@@ -168,7 +168,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           />
 
           {/* Slider Navigation Arrows */}
-          {product.images && product.images.length > 1 && (
+          {Boolean(product.images && product.images.length > 1) ? (
             <>
               <TouchableOpacity 
                 style={[styles.sliderArrow, styles.sliderArrowLeft]} 
@@ -193,10 +193,10 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
                 />
               </TouchableOpacity>
             </>
-          )}
+          ) : null}
           
           {/* Pagination Dots */}
-          {product.images && product.images.length > 1 && (
+          {Boolean(product.images && product.images.length > 1) ? (
             <View style={styles.paginationContainer}>
               {product.images.map((_, i) => (
                 <View 
@@ -208,7 +208,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
                 />
               ))}
             </View>
-          )}
+          ) : null}
 
           {/* Back Button */}
           <TouchableOpacity 
@@ -230,16 +230,16 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
         <View style={styles.detailsContainer}>
           {/* Header Info */}
           <View style={styles.tagsContainer}>
-            {product.category?.name && (
+            {Boolean(product.category?.name) ? (
               <View style={styles.tagPill}>
                 <Text style={styles.tagText}>{product.category.name}</Text>
               </View>
-            )}
-            {product.subCategory?.name && (
+            ) : null}
+            {Boolean(product.subCategory?.name) ? (
               <View style={styles.tagPill}>
                 <Text style={styles.tagText}>{product.subCategory.name}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View style={styles.titleRow}>
@@ -256,14 +256,14 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           {/* Pricing */}
           <View style={styles.priceRow}>
             <Text style={styles.price}>{product.priceAfterDiscount || product.price} ج.م</Text>
-            {product.discountAmountProduct > 0 && (
+            {Number(product.discountAmountProduct) > 0 ? (
               <View style={styles.discountContainer}>
                 <Text style={styles.oldPrice}>{product.price} ج.م</Text>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>وفر {product.discountAmountProduct} ج.م</Text>
                 </View>
               </View>
-            )}
+            ) : null}
           </View>
 
           {/* Inventory Info */}
@@ -279,7 +279,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
           </View>
 
           {/* Description */}
-          {product.description && product.description.trim() !== '' && (
+          {Boolean(product.description && product.description.trim() !== '') ? (
             <>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <Text style={[styles.sectionLabel, { color: colors.text }]}>وصف المنتج</Text>
@@ -287,10 +287,10 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
                 {product.description}
               </Text>
             </>
-          )}
+          ) : null}
 
           {/* Related Products Section */}
-          {relatedProducts.length > 0 && (
+          {relatedProducts.length > 0 ? (
             <>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <Text style={[styles.sectionLabel, { color: colors.text }]}>المنتجات التي تنتمي إلى هذا المنتج</Text>
@@ -323,7 +323,7 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
                 ))}
               </View>
             </>
-          )}
+          ) : null}
 
         </View>
       </ScrollView>

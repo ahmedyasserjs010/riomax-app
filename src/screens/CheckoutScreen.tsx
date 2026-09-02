@@ -511,18 +511,18 @@ export const CheckoutScreen = ({ navigation }: any) => {
             <Text style={{ color: colors.textMuted }}>مصاريف الشحن</Text>
             <Text style={{ color: colors.text }}>{shipping} ج.م</Text>
           </View>
-          {vatConfig.enabled && (
+          {vatConfig.enabled ? (
             <View style={styles.summaryRow}>
               <Text style={{ color: colors.textMuted }}>ضريبة القيمة المضافة ({vatConfig.percentage}%)</Text>
               <Text style={{ color: colors.text }}>{vat.toLocaleString()} ج.م</Text>
             </View>
-          )}
-          {appliedCoupon && (
+          ) : null}
+          {Boolean(appliedCoupon) ? (
             <View style={styles.summaryRow}>
               <Text style={{ color: Colors.success }}>خصم الكوبون</Text>
               <Text style={{ color: Colors.success }}>-{couponDiscount.toLocaleString()} ج.م</Text>
             </View>
-          )}
+          ) : null}
           <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 10 }]} />
           <View style={styles.summaryRow}>
             <Text style={[styles.totalLabel, { color: colors.text }]}>الإجمالي المستحق</Text>

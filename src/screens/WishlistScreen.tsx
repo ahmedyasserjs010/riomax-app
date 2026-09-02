@@ -112,27 +112,27 @@ export const WishlistScreen = ({ navigation }: any) => {
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{product.name}</Text>
                   
                   <View style={styles.tagsContainer}>
-                    {product.category?.name && (
+                    {Boolean(product.category?.name) ? (
                       <View style={styles.tagPill}>
                         <Text style={styles.tagText} numberOfLines={1}>{product.category.name}</Text>
                       </View>
-                    )}
-                    {(product.subCategory?.name || product.subCategory) && (
+                    ) : null}
+                    {Boolean(product.subCategory?.name || product.subCategory) ? (
                       <View style={styles.tagPill}>
                         <Text style={styles.tagText} numberOfLines={1}>
                           {typeof product.subCategory === 'object' ? product.subCategory.name : product.subCategory}
                         </Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
 
                   <View style={styles.priceRow}>
                     <Text style={styles.price}>
                       {product.priceAfterDiscount > 0 ? product.priceAfterDiscount : product.price} ج.م
                     </Text>
-                    {product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price && (
+                    {Boolean(product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price) ? (
                       <Text style={styles.oldPrice}>{product.price} ج.م</Text>
-                    )}
+                    ) : null}
                   </View>
                 </View>
               </TouchableOpacity>
