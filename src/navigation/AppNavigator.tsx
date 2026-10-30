@@ -1,5 +1,4 @@
 import React from 'react';
-import { enableScreens, enableFreeze } from 'react-native-screens';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useUser } from '../context/UserContext';
@@ -15,16 +14,12 @@ import { BurgerMenu } from '../components/BurgerMenu';
 import { ProfileSidebar } from '../components/ProfileSidebar';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 
-
 // Types & Config
 import { RootStackParamList } from './navigationTypes';
 import { linkingConfig, screenTransitions } from './navigationConfig';
 
-// Initialize react-native-screens optimizations
-enableScreens(true);
-enableFreeze(true);
-
 const RootStack = createNativeStackNavigator<RootStackParamList>();
+
 
 export const AppNavigator = () => {
   const { isLoading } = useUser();

@@ -2,7 +2,7 @@ import { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
 
 // Centralized navigation configuration constants
-export const LINKING_PREFIXES = ['riomax://', 'https://riomax.app', 'https://*.riomax.app'];
+export const LINKING_PREFIXES = ['riomaxapp://', 'riomax://', 'https://riomax.app', 'https://*.riomax.app'];
 
 // Deep linking configuration
 export const linkingConfig: any = {
@@ -17,6 +17,11 @@ export const linkingConfig: any = {
               Categories: 'categories',
               CategoryProducts: 'categories/:categoryId',
               ProductsList: 'home-search',
+              ProductDetail: 'product/:productId',
+              Checkout: 'checkout',
+              Cart: 'cart',
+              Wishlist: 'wishlist',
+              DynamicPage: 'page/:type',
             },
           },
           Products: {
@@ -45,11 +50,6 @@ export const linkingConfig: any = {
           ConfirmEmail: 'confirm-email/:email',
         },
       },
-      ProductDetail: 'product/:productId',
-      Checkout: 'checkout',
-      Cart: 'cart',
-      Wishlist: 'wishlist',
-      DynamicPage: 'page/:type',
     },
   },
 };

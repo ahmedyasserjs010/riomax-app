@@ -13,6 +13,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 
 import { ToastProvider } from './src/context/ToastContext';
 import { Toast } from './src/components/Toast';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const MainAppContent = () => {
   const { theme } = useTheme();
@@ -28,26 +29,29 @@ const MainAppContent = () => {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <UserProvider>
-            <ThemeProvider>
-              <ToastProvider>
-                <CartProvider>
-                  <WishlistProvider>
-                    <NavigationProvider>
-                      <MainAppContent />
-                    </NavigationProvider>
-                  </WishlistProvider>
-                </CartProvider>
-              </ToastProvider>
-            </ThemeProvider>
-          </UserProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <UserProvider>
+              <ThemeProvider>
+                <ToastProvider>
+                  <CartProvider>
+                    <WishlistProvider>
+                      <NavigationProvider>
+                        <MainAppContent />
+                      </NavigationProvider>
+                    </WishlistProvider>
+                  </CartProvider>
+                </ToastProvider>
+              </ThemeProvider>
+            </UserProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
+
 
 

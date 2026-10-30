@@ -18,7 +18,7 @@ interface SharedStackScreensProps {
   Stack: any;
 }
 
-export const SharedStackScreens: React.FC<SharedStackScreensProps> = ({ Stack }) => {
+export const SharedStackScreens = ({ Stack }: SharedStackScreensProps): React.JSX.Element => {
   return (
     <>
       <Stack.Screen 

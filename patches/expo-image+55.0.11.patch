@@ -1,0 +1,46 @@
+diff --git a/node_modules/expo-image/ios/ImageView.swift b/node_modules/expo-image/ios/ImageView.swift
+index 034b662..12929e0 100644
+--- a/node_modules/expo-image/ios/ImageView.swift
++++ b/node_modules/expo-image/ios/ImageView.swift
+@@ -656,12 +656,16 @@ public final class ImageView: ExpoView {
+       case .none: sdImageView.addSymbolEffect(.breathe, options: options)
+       }
+     default:
++#if compiler(>=6.2)
+       if #available(iOS 26.0, tvOS 26.0, *) {
+         applySymbolEffectiOS26(effect: effect, scope: scope, options: options)
+       }
++#endif
++      break
+     }
+   }
+ 
++#if compiler(>=6.2)
+   @available(iOS 26.0, tvOS 26.0, *)
+   private func applySymbolEffectiOS26(effect: SFSymbolEffectType, scope: SFSymbolEffectScope?, options: SymbolEffectOptions) {
+     switch effect {
+@@ -681,6 +685,7 @@ public final class ImageView: ExpoView {
+       break
+     }
+   }
++#endif
+ 
+   func startSymbolAnimation() {
+     if #available(iOS 17.0, tvOS 17.0, *) {
+diff --git a/node_modules/expo-image/ios/SFSymbolEffect.swift b/node_modules/expo-image/ios/SFSymbolEffect.swift
+index 4adb6f8..f4bfdcc 100644
+--- a/node_modules/expo-image/ios/SFSymbolEffect.swift
++++ b/node_modules/expo-image/ios/SFSymbolEffect.swift
+@@ -19,9 +19,9 @@ enum SFSymbolEffectType: String, Enumerable {
+   case wiggle = "wiggle"
+   case rotate = "rotate"
+   case breathe = "breathe"
+-  // iOS 26+
+-  case drawOn = "draw/on"
+-  case drawOff = "draw/off"
++  // iOS 26+ (requires Xcode 26 SDK / Swift 6.2+)
++  // case drawOn = "draw/on"
++  // case drawOff = "draw/off"
+ }
+ 
+ enum SFSymbolEffectScope: String, Enumerable {
