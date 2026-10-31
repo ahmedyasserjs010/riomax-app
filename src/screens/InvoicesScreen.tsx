@@ -38,7 +38,9 @@ export const InvoicesScreen = () => {
 
   // Queries
   const { data: invoicesData, isLoading: loading, refetch } = useInvoices(isAuthenticated);
-  const invoices = invoicesData || [];
+  const invoices = (invoicesData || []).filter((o: any) => 
+    !['paymob_card', 'paymob_wallet'].includes(o.paymentMethod) || o.paymentStatus === 'paid'
+  );
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
