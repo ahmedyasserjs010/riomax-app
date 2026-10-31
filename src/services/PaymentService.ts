@@ -9,5 +9,10 @@ export const PaymentService = {
   verifyPaymentStatus: async (orderId: string) => {
     const response = await apiClient.get(`/payment/verify/${orderId}`) as any;
     return response.data;
+  },
+
+  cancelPayment: async (orderId: string) => {
+    const response = await apiClient.post(`/payment/cancel/${orderId}`) as any;
+    return response.data;
   }
 };

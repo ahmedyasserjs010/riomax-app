@@ -23,6 +23,7 @@ import { OrderService, UserService } from '../services/ProfileServices';
 import { CouponService } from '../services/CouponService';
 import { PaymentService } from '../services/PaymentService';
 import { PublicService } from '../services/PublicService';
+import { storage } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
 
@@ -62,7 +63,10 @@ export const CheckoutScreen = ({ navigation }: any) => {
   // WebView for Paymob
   const [showWebView, setShowWebView] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState('');
-  const [paymentResult, setPaymentResult] = useState<'success' | 'failure' | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<'success' | 'pending' | 'cancelled' | 'failed' | 'unavailable' | null>(null);
 
   // Terms
   const [acceptPolicy, setAcceptPolicy] = useState(false);
@@ -96,6 +100,41 @@ export const CheckoutScreen = ({ navigation }: any) => {
       }
     };
     fetchSettings();
+  }, []);
+
+  // Recovery Flow: check if there is an uncompleted payment when screen opens
+  React.useEffect(() => {
+    let isMounted = true;
+    const checkPendingRecovery = async () => {
+      try {
+        const pendingId = await storage.getItem('@riomax_pending_order_id');
+        if (pendingId) {
+          const res = await PaymentService.verifyPaymentStatus(pendingId);
+          if (res?.data) {
+            if (res.data.status === 'paid') {
+              await storage.deleteItem('@riomax_pending_order_id');
+              await refreshCart();
+              if (isMounted) {
+                Alert.alert(
+                  'تم الدفع بنجاح!',
+                  `تم استلام وتأكيد دفع طلبك (${res.data.orderNumber || ''}) بنجاح.`,
+                  [
+                    { text: 'عرض الفاتورة', onPress: () => finishCheckout() }
+                  ]
+                );
+              }
+            } else if (res.data.status === 'failed') {
+              await storage.deleteItem('@riomax_pending_order_id');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Recovery check error:', err);
+      }
+    };
+
+    checkPendingRecovery();
+    return () => { isMounted = false; };
   }, []);
 
   const subtotal = cartItems.reduce((acc, item) => {
@@ -190,6 +229,13 @@ export const CheckoutScreen = ({ navigation }: any) => {
       if (formData.paymentMethod === 'paymob_card' || formData.paymentMethod === 'paymob_wallet') {
         const response: any = await PaymentService.createPaymobIntention(payload);
         if (response?.data?.checkoutUrl) {
+          const newOrderId = response.data.orderId;
+          const newOrderNumber = response.data.orderNumber;
+          setCurrentOrderId(newOrderId);
+          setCurrentOrderNumber(newOrderNumber);
+          if (newOrderId) {
+            await storage.setItem('@riomax_pending_order_id', newOrderId);
+          }
           setCheckoutUrl(response.data.checkoutUrl);
           setShowWebView(true);
           return;
@@ -294,29 +340,119 @@ export const CheckoutScreen = ({ navigation }: any) => {
     }
   };
 
+  const verifyOrderPayment = async (orderId: string, urlPending = false, urlSuccess = false) => {
+    setIsVerifyingPayment(true);
+    let verified = false;
+
+    // Retry verification up to 3 times to accommodate webhook latency
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await PaymentService.verifyPaymentStatus(orderId);
+        if (res?.data) {
+          if (res.data.orderNumber) {
+            setCurrentOrderNumber(res.data.orderNumber);
+          }
+
+          if (res.data.status === 'paid') {
+            await storage.deleteItem('@riomax_pending_order_id');
+            await refreshCart();
+            setPaymentResult('success');
+            verified = true;
+            break;
+          } else if (res.data.status === 'failed') {
+            await storage.deleteItem('@riomax_pending_order_id');
+            await refreshCart();
+            setPaymentResult('failed');
+            verified = true;
+            break;
+          } else if (res.data.status === 'pending_payment') {
+            // If URL explicitly indicates failure, break as failed
+            if (!urlSuccess && !urlPending) {
+              await storage.deleteItem('@riomax_pending_order_id');
+              await refreshCart();
+              setPaymentResult('failed');
+              verified = true;
+              break;
+            }
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 1500));
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Verification attempt ${attempt + 1} error:`, err);
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+    }
+
+    setIsVerifyingPayment(false);
+
+    if (!verified) {
+      if (urlPending) {
+        setPaymentResult('pending');
+      } else if (urlSuccess) {
+        setPaymentResult('pending');
+      } else {
+        setPaymentResult('unavailable');
+      }
+    }
+  };
+
   const handleWebViewNavigationStateChange = async (newNavState: any) => {
     const { url } = newNavState;
     if (!url) return;
 
-    if (url.includes('/payment-result')) {
+    // Validate exact callback origin and path
+    let isPaymentResult = false;
+    try {
+      const parsedUrl = new URL(url);
+      const validOrigins = [
+        'https://riomax.com.eg',
+        'https://www.riomax.com.eg',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+      ];
+      const hasValidOrigin = validOrigins.includes(parsedUrl.origin) || parsedUrl.hostname.includes('riomax.com.eg');
+      const hasValidPath = parsedUrl.pathname === '/payment-result' || parsedUrl.pathname.startsWith('/payment-result');
+      if (hasValidOrigin && hasValidPath) {
+        isPaymentResult = true;
+      }
+    } catch {
+      if (/^https?:\/\/(?:www\.)?riomax\.com\.eg\/payment-result/i.test(url)) {
+        isPaymentResult = true;
+      }
+    }
+
+    if (isPaymentResult) {
       setShowWebView(false);
       setCheckoutUrl('');
 
       const getParam = (name: string) => {
         const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
         const results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
+        if (!results || !results[2]) return null;
         return decodeURIComponent(results[2].replace(/\+/g, ' '));
       };
 
       const success = getParam('success');
       const pending = getParam('pending');
 
-      if (success === 'true' && pending === 'false') {
-        setPaymentResult('success');
+      const orderIdToVerify = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+
+      if (orderIdToVerify) {
+        await verifyOrderPayment(orderIdToVerify, pending === 'true', success === 'true');
       } else {
-        setPaymentResult('failure');
+        if (success === 'true' && pending === 'false') {
+          await refreshCart();
+          setPaymentResult('success');
+        } else if (pending === 'true') {
+          setPaymentResult('pending');
+        } else {
+          await refreshCart();
+          setPaymentResult('failed');
+        }
       }
     }
   };
@@ -336,6 +472,35 @@ export const CheckoutScreen = ({ navigation }: any) => {
         }
       ],
     });
+  };
+
+  const handleCancelPayment = () => {
+    Alert.alert(
+      'تأكيد الإلغاء',
+      'هل تريد إلغاء عملية الدفع؟ ستظل جميع منتجاتك محفوظة بالكامل داخل سلتك.',
+      [
+        { text: 'الاستمرار في الدفع', style: 'cancel' },
+        { 
+          text: 'نعم، إلغاء', 
+          style: 'destructive', 
+          onPress: async () => {
+            setShowWebView(false);
+            setCheckoutUrl('');
+            const orderIdToCancel = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+            if (orderIdToCancel) {
+              try {
+                await PaymentService.cancelPayment(orderIdToCancel);
+              } catch (e) {
+                console.error('Cancel payment error:', e);
+              }
+              await storage.deleteItem('@riomax_pending_order_id');
+            }
+            await refreshCart();
+            setPaymentResult('cancelled');
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -566,35 +731,11 @@ export const CheckoutScreen = ({ navigation }: any) => {
       <Modal
         visible={showWebView}
         animationType="slide"
-        onRequestClose={() => {
-          Alert.alert(
-            'تأكيد الإلغاء',
-            'هل تريد إلغاء عملية الدفع؟',
-            [
-              { text: 'لا', style: 'cancel' },
-              { text: 'نعم', style: 'destructive', onPress: () => {
-                setShowWebView(false);
-                setCheckoutUrl('');
-              }}
-            ]
-          );
-        }}
+        onRequestClose={handleCancelPayment}
       >
         <View style={{ flex: 1 }}>
           <View style={[styles.webViewHeader, { backgroundColor: colors.card, borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 15) }]}>
-            <TouchableOpacity onPress={() => {
-              Alert.alert(
-                'تأكيد الإلغاء',
-                'هل تريد إلغاء عملية الدفع؟',
-                [
-                  { text: 'لا', style: 'cancel' },
-                  { text: 'نعم', style: 'destructive', onPress: () => {
-                    setShowWebView(false);
-                    setCheckoutUrl('');
-                  }}
-                ]
-              );
-            }}>
+            <TouchableOpacity onPress={handleCancelPayment}>
               <Ionicons name="close" size={26} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.webViewTitle, { color: colors.text }]}>الدفع الإلكتروني</Text>
@@ -615,6 +756,23 @@ export const CheckoutScreen = ({ navigation }: any) => {
         </View>
       </Modal>
 
+      {/* Verifying Payment Modal */}
+      <Modal
+        visible={isVerifyingPayment}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.resultOverlay}>
+          <View style={[styles.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 20 }} />
+            <Text style={[styles.resultTitle, { color: colors.text }]}>جاري التحقق من الدفع...</Text>
+            <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
+              يرجى الانتظار، جاري تأكيد حالة العملية مع السيرفر والبنك.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* Payment Result Modal */}
       <Modal
         visible={paymentResult !== null}
@@ -623,7 +781,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       >
         <View style={styles.resultOverlay}>
           <View style={[styles.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {paymentResult === 'success' ? (
+            {paymentResult === 'success' && (
               <>
                 <View style={[styles.resultIconBg, { backgroundColor: Colors.success + '20' }]}>
                   <Ionicons name="checkmark-circle" size={80} color={Colors.success} />
@@ -632,6 +790,11 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
                   شكراً لك! لقد تم استلام طلبك ودفع قيمته بنجاح وسيتم شحنه قريباً.
                 </Text>
+                {currentOrderNumber && (
+                  <Text style={[styles.orderNumberBadge, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}>
+                    رقم الطلب: {currentOrderNumber}
+                  </Text>
+                )}
                 <TouchableOpacity 
                   style={[styles.resultBtn, { backgroundColor: Colors.primary }]}
                   onPress={() => {
@@ -639,23 +802,118 @@ export const CheckoutScreen = ({ navigation }: any) => {
                     finishCheckout();
                   }}
                 >
-                  <Text style={styles.resultBtnText}>متابعة</Text>
+                  <Text style={styles.resultBtnText}>عرض الفواتير والطلبات</Text>
                 </TouchableOpacity>
               </>
-            ) : (
+            )}
+
+            {paymentResult === 'pending' && (
+              <>
+                <View style={[styles.resultIconBg, { backgroundColor: '#F59E0B20' }]}>
+                  <Ionicons name="time" size={80} color="#F59E0B" />
+                </View>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>الدفع قيد المراجعة ⏳</Text>
+                <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
+                  معاملتك قيد المعالجة حالياً من قِبل البنك أو المحفظة الإلكترونية. طلبك مسجل لدينا ولا داعي لتكرار الدفع.
+                </Text>
+                {currentOrderNumber && (
+                  <Text style={[styles.orderNumberBadge, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}>
+                    رقم الطلب: {currentOrderNumber}
+                  </Text>
+                )}
+                <TouchableOpacity 
+                  style={[styles.resultBtn, { backgroundColor: '#F59E0B', marginBottom: 10 }]}
+                  onPress={() => {
+                    setPaymentResult(null);
+                    finishCheckout();
+                  }}
+                >
+                  <Text style={styles.resultBtnText}>متابعة الطلب في الفواتير</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.resultBtnSecondary, { borderColor: colors.border }]}
+                  onPress={() => setPaymentResult(null)}
+                >
+                  <Text style={[styles.resultBtnSecondaryText, { color: colors.text }]}>إغلاق</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {paymentResult === 'cancelled' && (
+              <>
+                <View style={[styles.resultIconBg, { backgroundColor: '#3B82F620' }]}>
+                  <Ionicons name="information-circle" size={80} color="#3B82F6" />
+                </View>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>تم إلغاء عملية الدفع</Text>
+                <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
+                  تم إلغاء عملية الدفع بناءً على رغبتك. جميع المنتجات محفوظة بالكامل في سلتك ولم تفقد أي شيء.
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.resultBtn, { backgroundColor: Colors.primary }]}
+                  onPress={() => setPaymentResult(null)}
+                >
+                  <Text style={styles.resultBtnText}>العودة لمتابعة الشراء</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {paymentResult === 'failed' && (
               <>
                 <View style={[styles.resultIconBg, { backgroundColor: Colors.accent + '20' }]}>
                   <Ionicons name="close-circle" size={80} color={Colors.accent} />
                 </View>
-                <Text style={[styles.resultTitle, { color: colors.text }]}>فشلت عملية الدفع</Text>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>لم تكتمل عملية الدفع</Text>
                 <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
-                  لم نتمكن من إتمام عملية الدفع الخاصة بك. يرجى المحاولة مرة أخرى أو اختيار طريقة دفع مختلفة.
+                  تعذر إتمام عملية الدفع بواسطة البطاقة أو المحفظة. جميع المنتجات ما زالت محفوظة في سلتك.
                 </Text>
                 <TouchableOpacity 
-                  style={[styles.resultBtn, { backgroundColor: Colors.accent }]}
+                  style={[styles.resultBtn, { backgroundColor: Colors.primary, marginBottom: 10 }]}
                   onPress={() => setPaymentResult(null)}
                 >
-                  <Text style={styles.resultBtnText}>إغلاق</Text>
+                  <Text style={styles.resultBtnText}>إعادة المحاولة</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.resultBtnSecondary, { borderColor: colors.border }]}
+                  onPress={() => {
+                    setPaymentResult(null);
+                    setFormData(prev => ({ ...prev, paymentMethod: 'cash_on_delivery' }));
+                  }}
+                >
+                  <Text style={[styles.resultBtnSecondaryText, { color: colors.text }]}>الدفع عند الاستلام (COD)</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {paymentResult === 'unavailable' && (
+              <>
+                <View style={[styles.resultIconBg, { backgroundColor: '#EF444420' }]}>
+                  <Ionicons name="alert-circle" size={80} color="#EF4444" />
+                </View>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>تعذر التحقق من الدفع</Text>
+                <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
+                  لم نتمكن من الوصول للسيرفر للتحقق من نتيجة الدفع. يمكنك إعادة المحاولة الآن أو التحقق لاحقاً من الفواتير.
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.resultBtn, { backgroundColor: Colors.primary, marginBottom: 10 }]}
+                  onPress={async () => {
+                    const orderIdToVerify = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+                    if (orderIdToVerify) {
+                      await verifyOrderPayment(orderIdToVerify);
+                    } else {
+                      setPaymentResult(null);
+                    }
+                  }}
+                >
+                  <Text style={styles.resultBtnText}>إعادة فحص الحالة</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.resultBtnSecondary, { borderColor: colors.border }]}
+                  onPress={() => {
+                    setPaymentResult(null);
+                    finishCheckout();
+                  }}
+                >
+                  <Text style={[styles.resultBtnSecondaryText, { color: colors.text }]}>متابعة الفواتير</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -850,5 +1108,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  orderNumberBadge: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  resultBtnSecondary: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultBtnSecondaryText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
