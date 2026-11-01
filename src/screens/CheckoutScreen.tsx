@@ -34,6 +34,8 @@ const EGYPT_GOVERNORATES = [
     'السويس', 'مطروح', 'شمال سيناء', 'البحر الأحمر', 'الوادي الجديد', 'جنوب سيناء'
 ];
 
+const PENDING_ORDER_STORAGE_KEY = 'riomax_pending_order_id';
+
 export const CheckoutScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { showToast } = useToast();
@@ -107,12 +109,12 @@ export const CheckoutScreen = ({ navigation }: any) => {
     let isMounted = true;
     const checkPendingRecovery = async () => {
       try {
-        const pendingId = await storage.getItem('@riomax_pending_order_id');
+        const pendingId = await storage.getItem(PENDING_ORDER_STORAGE_KEY);
         if (pendingId) {
           const res = await PaymentService.verifyPaymentStatus(pendingId);
           if (res?.data) {
             if (res.data.status === 'paid') {
-              await storage.deleteItem('@riomax_pending_order_id');
+              await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
               await refreshCart();
               if (isMounted) {
                 Alert.alert(
@@ -124,7 +126,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 );
               }
             } else if (res.data.status === 'failed') {
-              await storage.deleteItem('@riomax_pending_order_id');
+              await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
             }
           }
         }
@@ -245,7 +247,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
           setCurrentOrderId(newOrderId);
           setCurrentOrderNumber(newOrderNumber);
           if (newOrderId) {
-            await storage.setItem('@riomax_pending_order_id', newOrderId);
+            await storage.setItem(PENDING_ORDER_STORAGE_KEY, newOrderId);
           }
           setCheckoutUrl(intentData.checkoutUrl);
           setShowWebView(true);
@@ -365,13 +367,13 @@ export const CheckoutScreen = ({ navigation }: any) => {
           }
 
           if (res.data.status === 'paid') {
-            await storage.deleteItem('@riomax_pending_order_id');
+            await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
             await refreshCart();
             setPaymentResult('success');
             verified = true;
             break;
           } else if (res.data.status === 'failed') {
-            await storage.deleteItem('@riomax_pending_order_id');
+            await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
             await refreshCart();
             setPaymentResult('failed');
             verified = true;
@@ -379,7 +381,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
           } else if (res.data.status === 'pending_payment') {
             // If URL explicitly indicates failure, break as failed
             if (!urlSuccess && !urlPending) {
-              await storage.deleteItem('@riomax_pending_order_id');
+              await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
               await refreshCart();
               setPaymentResult('failed');
               verified = true;
@@ -450,7 +452,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       const success = getParam('success');
       const pending = getParam('pending');
 
-      const orderIdToVerify = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+      const orderIdToVerify = currentOrderId || (await storage.getItem(PENDING_ORDER_STORAGE_KEY));
 
       if (orderIdToVerify) {
         await verifyOrderPayment(orderIdToVerify, pending === 'true', success === 'true');
@@ -497,14 +499,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
           onPress: async () => {
             setShowWebView(false);
             setCheckoutUrl('');
-            const orderIdToCancel = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+            const orderIdToCancel = currentOrderId || (await storage.getItem(PENDING_ORDER_STORAGE_KEY));
             if (orderIdToCancel) {
               try {
                 await PaymentService.cancelPayment(orderIdToCancel);
               } catch (e) {
                 console.error('Cancel payment error:', e);
               }
-              await storage.deleteItem('@riomax_pending_order_id');
+              await storage.deleteItem(PENDING_ORDER_STORAGE_KEY);
             }
             // Preserve cart; do NOT refreshCart here.
             setPaymentResult('cancelled');
@@ -914,7 +916,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 <TouchableOpacity 
                   style={[styles.resultBtn, { backgroundColor: Colors.primary, marginBottom: 10 }]}
                   onPress={async () => {
-                    const orderIdToVerify = currentOrderId || (await storage.getItem('@riomax_pending_order_id'));
+                    const orderIdToVerify = currentOrderId || (await storage.getItem(PENDING_ORDER_STORAGE_KEY));
                     if (orderIdToVerify) {
                       await verifyOrderPayment(orderIdToVerify);
                     } else {

@@ -11,39 +11,63 @@ if (Platform.OS !== 'web') {
   SecureStoreModule = require('expo-secure-store');
 }
 
+/**
+ * Sanitize key for SecureStore compatibility.
+ * SecureStore allows only alphanumeric characters, '.', '-', and '_'.
+ */
+const sanitizeKey = (key: string): string => {
+  return key ? key.replace(/[^a-zA-Z0-9._-]/g, '_') : 'riomax_default_key';
+};
+
 export const storage = {
   getItem: async (key: string): Promise<string | null> => {
+    const safeKey = sanitizeKey(key);
     if (Platform.OS === 'web') {
       try {
-        return localStorage.getItem(key);
+        return localStorage.getItem(safeKey);
       } catch {
         return null;
       }
     }
-    return SecureStoreModule.getItemAsync(key);
+    try {
+      return await SecureStoreModule.getItemAsync(safeKey);
+    } catch (e) {
+      console.warn('SecureStore.getItem error:', e);
+      return null;
+    }
   },
 
   setItem: async (key: string, value: string): Promise<void> => {
+    const safeKey = sanitizeKey(key);
     if (Platform.OS === 'web') {
       try {
-        localStorage.setItem(key, value);
+        localStorage.setItem(safeKey, value);
       } catch {
         console.error('localStorage setItem failed');
       }
       return;
     }
-    return SecureStoreModule.setItemAsync(key, value);
+    try {
+      await SecureStoreModule.setItemAsync(safeKey, value);
+    } catch (e) {
+      console.warn('SecureStore.setItem error:', e);
+    }
   },
 
   deleteItem: async (key: string): Promise<void> => {
+    const safeKey = sanitizeKey(key);
     if (Platform.OS === 'web') {
       try {
-        localStorage.removeItem(key);
+        localStorage.removeItem(safeKey);
       } catch {
         console.error('localStorage removeItem failed');
       }
       return;
     }
-    return SecureStoreModule.deleteItemAsync(key);
+    try {
+      await SecureStoreModule.deleteItemAsync(safeKey);
+    } catch (e) {
+      console.warn('SecureStore.deleteItem error:', e);
+    }
   },
 };
