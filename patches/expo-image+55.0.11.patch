@@ -1,37 +1,36 @@
 diff --git a/node_modules/expo-image/ios/ImageView.swift b/node_modules/expo-image/ios/ImageView.swift
-index 034b662..12929e0 100644
---- a/node_modules/expo-image/ios/ImageView.swift
-+++ b/node_modules/expo-image/ios/ImageView.swift
-@@ -656,12 +656,16 @@ public final class ImageView: ExpoView {
+@@ -654,29 +654,7 @@
+       case .byLayer: sdImageView.addSymbolEffect(.breathe.byLayer, options: options)
+       case .wholeSymbol: sdImageView.addSymbolEffect(.breathe.wholeSymbol, options: options)
        case .none: sdImageView.addSymbolEffect(.breathe, options: options)
+-      }
+-    default:
+-      if #available(iOS 26.0, tvOS 26.0, *) {
+-        applySymbolEffectiOS26(effect: effect, scope: scope, options: options)
+-      }
+-    }
+-  }
+-
+-  @available(iOS 26.0, tvOS 26.0, *)
+-  private func applySymbolEffectiOS26(effect: SFSymbolEffectType, scope: SFSymbolEffectScope?, options: SymbolEffectOptions) {
+-    switch effect {
+-    case .drawOn:
+-      switch scope {
+-      case .byLayer: sdImageView.addSymbolEffect(.drawOn.byLayer, options: options)
+-      case .wholeSymbol: sdImageView.addSymbolEffect(.drawOn.wholeSymbol, options: options)
+-      case .none: sdImageView.addSymbolEffect(.drawOn, options: options)
        }
+-    case .drawOff:
+-      switch scope {
+-      case .byLayer: sdImageView.addSymbolEffect(.drawOff.byLayer, options: options)
+-      case .wholeSymbol: sdImageView.addSymbolEffect(.drawOff.wholeSymbol, options: options)
+-      case .none: sdImageView.addSymbolEffect(.drawOff, options: options)
+-      }
      default:
-+#if compiler(>=6.2)
-       if #available(iOS 26.0, tvOS 26.0, *) {
-         applySymbolEffectiOS26(effect: effect, scope: scope, options: options)
-       }
-+#endif
-+      break
-     }
-   }
- 
-+#if compiler(>=6.2)
-   @available(iOS 26.0, tvOS 26.0, *)
-   private func applySymbolEffectiOS26(effect: SFSymbolEffectType, scope: SFSymbolEffectScope?, options: SymbolEffectOptions) {
-     switch effect {
-@@ -681,6 +685,7 @@ public final class ImageView: ExpoView {
        break
      }
-   }
-+#endif
- 
-   func startSymbolAnimation() {
-     if #available(iOS 17.0, tvOS 17.0, *) {
 diff --git a/node_modules/expo-image/ios/SFSymbolEffect.swift b/node_modules/expo-image/ios/SFSymbolEffect.swift
-index 4adb6f8..f4bfdcc 100644
---- a/node_modules/expo-image/ios/SFSymbolEffect.swift
-+++ b/node_modules/expo-image/ios/SFSymbolEffect.swift
-@@ -19,9 +19,9 @@ enum SFSymbolEffectType: String, Enumerable {
+@@ -19,9 +19,9 @@
    case wiggle = "wiggle"
    case rotate = "rotate"
    case breathe = "breathe"
