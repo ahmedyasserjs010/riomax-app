@@ -211,11 +211,16 @@ export const CheckoutScreen = ({ navigation }: any) => {
         city: formData.city.trim(),
         paymentMethod: formData.paymentMethod as any,
         cart: {
-          items: cartItems.map(item => ({
-            _id: item._id,
-            Products: item.Products,
-            quantity: item.quantity
-          }))
+          items: cartItems.map(item => {
+            const prod = item.Products;
+            const productId = typeof prod === 'object' && prod !== null ? (prod._id || prod.id) : prod;
+            return {
+              _id: item._id,
+              productId,
+              Products: item.Products,
+              quantity: item.quantity
+            };
+          })
         },
         subtotal,
         couponDiscount,
@@ -228,19 +233,25 @@ export const CheckoutScreen = ({ navigation }: any) => {
       // Online Payment with Paymob
       if (formData.paymentMethod === 'paymob_card' || formData.paymentMethod === 'paymob_wallet') {
         const response: any = await PaymentService.createPaymobIntention(payload);
-        if (response?.data?.checkoutUrl) {
-          const newOrderId = response.data.orderId;
-          const newOrderNumber = response.data.orderNumber;
+        const intentData = response?.data?.checkoutUrl 
+          ? response.data 
+          : (response?.checkoutUrl 
+            ? response 
+            : (response?.data?.data?.checkoutUrl ? response.data.data : null));
+
+        if (intentData?.checkoutUrl) {
+          const newOrderId = intentData.orderId;
+          const newOrderNumber = intentData.orderNumber;
           setCurrentOrderId(newOrderId);
           setCurrentOrderNumber(newOrderNumber);
           if (newOrderId) {
             await storage.setItem('@riomax_pending_order_id', newOrderId);
           }
-          setCheckoutUrl(response.data.checkoutUrl);
+          setCheckoutUrl(intentData.checkoutUrl);
           setShowWebView(true);
           return;
         } else {
-          throw new Error('لم نتمكن من الحصول على رابط الدفع الإلكتروني');
+          throw new Error(response?.message || 'لم نتمكن من الحصول على رابط الدفع الإلكتروني');
         }
       }
 
@@ -495,7 +506,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
               }
               await storage.deleteItem('@riomax_pending_order_id');
             }
-            await refreshCart();
+            // Preserve cart; do NOT refreshCart here.
             setPaymentResult('cancelled');
           }
         }
@@ -746,6 +757,13 @@ export const CheckoutScreen = ({ navigation }: any) => {
               source={{ uri: checkoutUrl }}
               onNavigationStateChange={handleWebViewNavigationStateChange}
               startInLoadingState
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              originWhitelist={['*']}
+              mixedContentMode="always"
+              thirdPartyCookiesEnabled={true}
+              sharedCookiesEnabled={true}
+              scalesPageToFit={true}
               renderLoading={() => (
                 <View style={styles.webLoading}>
                   <ActivityIndicator size="large" color={Colors.primary} />

@@ -23,8 +23,8 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
   const { categoryId, name } = route.params;
   const { colors } = useTheme();
 
-  // Queries
-  const { data: productsData, isLoading: loading } = useProducts({ category: categoryId, limit: 100 });
+  // Queries — use 'categoryId' to match backend's expected query parameter name
+  const { data: productsData, isLoading: loading } = useProducts({ categoryId, limit: 100 });
   const products = productsData?.products || [];
 
   if (loading) {
@@ -50,27 +50,33 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>لا توجد منتجات في هذا القسم حالياً.</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={[styles.productCard, { backgroundColor: colors.card }]}
-            onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })}
-          >
-            <Image 
-              source={{ uri: item.images[0]?.secure_url }} 
-              style={styles.productImage} 
-              contentFit="cover" 
-            />
-            <View style={styles.productInfo}>
-              <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-              <View style={styles.priceContainer}>
-                <Text style={styles.price}>{item.priceAfterDiscount} ج.م</Text>
-                {Number(item.discountAmountProduct) > 0 ? (
-                  <Text style={styles.oldPrice}>{item.price} ج.م</Text>
-                ) : null}
+        renderItem={({ item }) => {
+          // Show effective price: priceAfterDiscount if > 0, otherwise base price
+          const effectivePrice = item.priceAfterDiscount > 0 ? item.priceAfterDiscount : item.price;
+          const hasDiscount = Number(item.discountAmountProduct) > 0 && item.priceAfterDiscount > 0;
+
+          return (
+            <TouchableOpacity 
+              style={[styles.productCard, { backgroundColor: colors.card }]}
+              onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })}
+            >
+              <Image 
+                source={{ uri: item.images?.[0]?.secure_url }} 
+                style={styles.productImage} 
+                contentFit="cover" 
+              />
+              <View style={styles.productInfo}>
+                <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.price}>{effectivePrice} ج.م</Text>
+                  {hasDiscount ? (
+                    <Text style={styles.oldPrice}>{item.price} ج.م</Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        )}
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );

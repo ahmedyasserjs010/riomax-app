@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -19,6 +19,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthGuard } from '../components/AuthGuard';
 import { UserService } from '../services/ProfileServices';
 
+// Field configuration (stable, defined outside component)
+const PROFILE_FIELDS = [
+  { key: 'name', icon: 'person-outline', label: 'الاسم بالكامل', placeholder: 'مثلاً: محمد أحمد', keyboardType: 'default' as const },
+  { key: 'phone', icon: 'call-outline', label: 'رقم الهاتف', placeholder: '01xxxxxxxxx', keyboardType: 'phone-pad' as const },
+  { key: 'governorate', icon: 'map-outline', label: 'المحافظة', placeholder: 'مثلاً: القاهرة', keyboardType: 'default' as const },
+  { key: 'city', icon: 'business-outline', label: 'المدينة / المنطقة', placeholder: 'مثلاً: مدينة نصر', keyboardType: 'default' as const },
+  { key: 'address', icon: 'location-outline', label: 'العنوان بالتفصيل', placeholder: 'مثلاً: شارع التسعين، مبنى رقم 1', keyboardType: 'default' as const },
+] as const;
+
 export const UserProfileScreen = () => {
   const { colors } = useTheme();
   const { fullProfile, refreshProfile, isLoading: isAuthLoading } = useUser();
@@ -35,8 +44,13 @@ export const UserProfileScreen = () => {
     address: '',
   });
 
+  // Fetch fresh profile from database on mount
   useEffect(() => {
-    if (fullProfile) {
+    refreshProfile();
+  }, []);
+
+  useEffect(() => {
+    if (fullProfile && !isEditing) {
       setFormData({
         name: fullProfile.name || '',
         phone: fullProfile.phone || '',
@@ -45,7 +59,7 @@ export const UserProfileScreen = () => {
         address: fullProfile.address || '',
       });
     }
-  }, [fullProfile]);
+  }, [fullProfile, isEditing]);
 
   const onRefresh = async () => {
     setIsRefreshing(true);
@@ -72,29 +86,10 @@ export const UserProfileScreen = () => {
     }
   };
 
-  const EditableField = ({ icon, label, value, keyName, placeholder, keyboardType = 'default' }: any) => (
-    <View style={[styles.fieldContainer, { borderBottomColor: colors.border }]}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={22} color={Colors.primary} />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
-        {isEditing ? (
-          <TextInput
-            style={[styles.input, { color: colors.text, borderBottomColor: Colors.primary }]}
-            value={formData[keyName as keyof typeof formData]}
-            onChangeText={(text) => setFormData({ ...formData, [keyName]: text })}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textMuted}
-            keyboardType={keyboardType}
-            textAlign="right"
-          />
-        ) : (
-          <Text style={[styles.value, { color: colors.text }]}>{value || 'غير متوفر'}</Text>
-        )}
-      </View>
-    </View>
-  );
+  // Stable change handler using useCallback — prevents TextInput re-mounts
+  const handleFieldChange = useCallback((keyName: string, text: string) => {
+    setFormData(prev => ({ ...prev, [keyName]: text }));
+  }, []);
 
   return (
     <AuthGuard 
@@ -107,6 +102,7 @@ export const UserProfileScreen = () => {
       >
         <ScrollView 
           style={[styles.container, { backgroundColor: colors.background }]}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
           }
@@ -194,42 +190,32 @@ export const UserProfileScreen = () => {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>البيانات الشخصية</Text>
             
-            <EditableField 
-              icon="person-outline" 
-              label="الاسم بالكامل" 
-              value={fullProfile?.name} 
-              keyName="name"
-              placeholder="مثلاً: محمد أحمد"
-            />
-            <EditableField 
-              icon="call-outline" 
-              label="رقم الهاتف" 
-              value={fullProfile?.phone} 
-              keyName="phone"
-              placeholder="01xxxxxxxxx"
-              keyboardType="phone-pad"
-            />
-            <EditableField 
-              icon="map-outline" 
-              label="المحافظة" 
-              value={fullProfile?.governorate} 
-              keyName="governorate"
-              placeholder="مثلاً: القاهرة"
-            />
-            <EditableField 
-              icon="business-outline" 
-              label="المدينة / المنطقة" 
-              value={fullProfile?.city} 
-              keyName="city"
-              placeholder="مثلاً: مدينة نصر"
-            />
-            <EditableField 
-              icon="location-outline" 
-              label="العنوان بالتفصيل" 
-              value={fullProfile?.address} 
-              keyName="address"
-              placeholder="مثلاً: شارع التسعين، مبنى رقم 1"
-            />
+            {/* Render fields directly instead of using an inline component to prevent keyboard dismissal */}
+            {PROFILE_FIELDS.map((field) => (
+              <View key={field.key} style={[styles.fieldContainer, { borderBottomColor: colors.border }]}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name={field.icon as any} size={22} color={Colors.primary} />
+                </View>
+                <View style={styles.textContainer}>
+                  <Text style={[styles.label, { color: colors.textMuted }]}>{field.label}</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.input, { color: colors.text, borderBottomColor: Colors.primary }]}
+                      value={formData[field.key as keyof typeof formData]}
+                      onChangeText={(text) => handleFieldChange(field.key, text)}
+                      placeholder={field.placeholder}
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType={field.keyboardType}
+                      textAlign="right"
+                    />
+                  ) : (
+                    <Text style={[styles.value, { color: colors.text }]}>
+                      {(fullProfile as any)?.[field.key] || 'غير متوفر'}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
           </View>
 
           <View style={styles.footerInfo}>
