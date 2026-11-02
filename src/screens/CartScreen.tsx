@@ -1,4 +1,5 @@
 import React from 'react';
+import { CommonActions } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -24,7 +25,7 @@ import { useGeneralSettings } from '../hooks/useApi';
 
 const { width } = Dimensions.get('window');
 
-const CartItemCard = ({ item, onUpdate, onRemove, colors }: any) => {
+const CartItemCard = ({ item, onUpdate, onRemove, colors, navigation }: any) => {
   const product = item.Products as IProduct;
   const [localQty, setLocalQty] = React.useState(item.quantity);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -51,13 +52,24 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors }: any) => {
 
   return (
     <View style={[styles.cartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Image 
-        source={{ uri: product.images[0]?.secure_url }} 
-        style={styles.cartImage} 
-        contentFit="cover" 
-      />
+      <TouchableOpacity 
+        onPress={() => navigation?.navigate('ProductDetail', { productId: product._id || product.id })}
+        activeOpacity={0.7}
+      >
+        <Image 
+          source={{ uri: product.images[0]?.secure_url }} 
+          style={styles.cartImage} 
+          contentFit="cover" 
+        />
+      </TouchableOpacity>
       <View style={styles.cartInfo}>
-        <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{product.name}</Text>
+        <TouchableOpacity 
+          onPress={() => navigation?.navigate('ProductDetail', { productId: product._id || product.id })}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>{product.name}</Text>
+        </TouchableOpacity>
+
         
         <View style={styles.tagsContainer}>
           {Boolean(product.category?.name) ? (
@@ -227,7 +239,14 @@ export const CartScreen = ({ navigation }: any) => {
         <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>تبدو سلة مشترياتك فارغة حالياً. ابدأ بالتسوق الآن!</Text>
         <TouchableOpacity 
           style={styles.browseBtn}
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+          onPress={() => {
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+              })
+            );
+          }}
         >
           <Text style={styles.browseBtnText}>تصفح المنتجات</Text>
         </TouchableOpacity>
@@ -251,6 +270,7 @@ export const CartScreen = ({ navigation }: any) => {
             colors={colors} 
             onUpdate={handleUpdateQuantity}
             onRemove={handleRemove}
+            navigation={navigation}
           />
         )}
       />
@@ -277,7 +297,14 @@ export const CartScreen = ({ navigation }: any) => {
         <View style={styles.footerActions}>
           <TouchableOpacity 
             style={[styles.continueBtn, { borderColor: Colors.primary }]}
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+            onPress={() => {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'MainTabs', params: { screen: 'Products' } }],
+                })
+              );
+            }}
           >
             <Text style={[styles.continueBtnText, { color: Colors.primary }]}>متابعة التسوق</Text>
           </TouchableOpacity>

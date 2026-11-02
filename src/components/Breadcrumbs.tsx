@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 
 export interface BreadcrumbItem {
   label: string;
@@ -19,6 +19,15 @@ export const Breadcrumbs = ({ items }: BreadcrumbsProps) => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
 
+  const goHome = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+      })
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.card : '#f8fafc', borderBottomColor: colors.border }]}>
       <ScrollView 
@@ -28,7 +37,7 @@ export const Breadcrumbs = ({ items }: BreadcrumbsProps) => {
         style={{ direction: 'rtl' }}
       >
         <TouchableOpacity 
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+          onPress={goHome}
           style={styles.item}
         >
           <Ionicons name="home-outline" size={16} color={Colors.primary} />
