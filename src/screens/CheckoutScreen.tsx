@@ -27,20 +27,14 @@ import { storage } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
 
-const EGYPT_GOVERNORATES = [
-    'القاهرة', 'الجيزة', 'الإسكندرية', 'الشرقية', 'الدقهلية', 'القليوبية', 'المنيا', 
-    'الغربية', 'سوهاج', 'أسيوط', 'المنوفية', 'البحيرة', 'الفيوم', 'كفر الشيخ', 
-    'قنا', 'بني سويف', 'أسوان', 'دمياط', 'الإسماعيلية', 'الأقصر', 'بورسعيد', 
-    'السويس', 'مطروح', 'شمال سيناء', 'البحر الأحمر', 'الوادي الجديد', 'جنوب سيناء'
-];
-
 const PENDING_ORDER_STORAGE_KEY = 'riomax_pending_order_id';
+const SHIPPING_INFO_STORAGE_KEY = 'riomax_shipping_info';
 
 export const CheckoutScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { showToast } = useToast();
   const { cartItems, refreshCart, cartCount } = useCart();
-  const { userData, fullProfile } = useUser();
+  const { userData, fullProfile, refreshProfile } = useUser();
   const insets = useSafeAreaInsets();
   
   const [loading, setLoading] = useState(false);
@@ -73,19 +67,87 @@ export const CheckoutScreen = ({ navigation }: any) => {
   // Terms
   const [acceptPolicy, setAcceptPolicy] = useState(false);
 
-  // Sync user details to form when fullProfile loads from server
+  // 1. Fetch fresh profile from database on mount & load cached shipping details
+  React.useEffect(() => {
+    refreshProfile();
+
+    const loadCachedShipping = async () => {
+      try {
+        const cached = await storage.getItem(SHIPPING_INFO_STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setFormData(prev => ({
+            ...prev,
+            name: prev.name || parsed.name || '',
+            phone: prev.phone || parsed.phone || '',
+            governorate: prev.governorate || parsed.governorate || '',
+            city: prev.city || parsed.city || '',
+            address: prev.address || parsed.address || '',
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to load cached shipping info:', err);
+      }
+    };
+    loadCachedShipping();
+  }, []);
+
+  // 2. Sync user details to form when fullProfile loads or updates from server
   React.useEffect(() => {
     if (fullProfile) {
       setFormData(prev => ({
         ...prev,
-        name: prev.name || fullProfile.name || '',
-        phone: prev.phone || fullProfile.phone || '',
-        governorate: prev.governorate || fullProfile.governorate || '',
-        city: prev.city || fullProfile.city || '',
-        address: prev.address || fullProfile.address || '',
+        name: fullProfile.name || prev.name || userData?.name || '',
+        phone: fullProfile.phone || prev.phone || '',
+        governorate: fullProfile.governorate || prev.governorate || '',
+        city: fullProfile.city || prev.city || '',
+        address: fullProfile.address || prev.address || '',
       }));
     }
   }, [fullProfile]);
+
+  // Helper to persist shipping details locally and update backend user profile
+  const syncAndSaveProfile = async (currentData: typeof formData) => {
+    // Save to local storage for instant prefill next time
+    try {
+      await storage.setItem(SHIPPING_INFO_STORAGE_KEY, JSON.stringify({
+        name: currentData.name.trim(),
+        phone: currentData.phone.trim(),
+        governorate: currentData.governorate.trim(),
+        city: currentData.city.trim(),
+        address: currentData.address.trim(),
+      }));
+    } catch (e) {
+      console.warn('Failed to cache shipping info in local storage:', e);
+    }
+
+    // Auto-save to user profile in backend database (matching website CheckoutClientPage.tsx)
+    try {
+      const updatePayload: any = {};
+      if (currentData.name?.trim() && currentData.name.trim() !== fullProfile?.name) {
+        updatePayload.name = currentData.name.trim();
+      }
+      if (currentData.phone?.trim() && currentData.phone.trim() !== fullProfile?.phone) {
+        updatePayload.phone = currentData.phone.trim();
+      }
+      if (currentData.governorate?.trim() && currentData.governorate.trim() !== fullProfile?.governorate) {
+        updatePayload.governorate = currentData.governorate.trim();
+      }
+      if (currentData.city?.trim() && currentData.city.trim() !== fullProfile?.city) {
+        updatePayload.city = currentData.city.trim();
+      }
+      if (currentData.address?.trim() && currentData.address.trim() !== fullProfile?.address) {
+        updatePayload.address = currentData.address.trim();
+      }
+
+      if (Object.keys(updatePayload).length > 0) {
+        await UserService.updateProfile(updatePayload);
+        refreshProfile();
+      }
+    } catch (profileErr) {
+      console.warn('Auto-save profile details error:', profileErr);
+    }
+  };
 
   React.useEffect(() => {
     const fetchSettings = async () => {
@@ -193,8 +255,8 @@ export const CheckoutScreen = ({ navigation }: any) => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || !formData.governorate || !formData.city.trim()) {
-      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة بما فيها المدينة / المركز');
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
+      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة بما فيها المحافظة والمدينة / المركز');
       return;
     }
 
@@ -205,11 +267,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
+      // Auto-save shipping info to storage and user profile in database
+      await syncAndSaveProfile(formData);
+
       const payload = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         address: formData.address.trim(),
-        governorate: formData.governorate,
+        governorate: formData.governorate.trim(),
         city: formData.city.trim(),
         paymentMethod: formData.paymentMethod as any,
         cart: {
@@ -267,21 +332,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
         console.error('Failed to refresh cart:', cartErr);
       }
 
-      // Save profile details (compare against fullProfile which has all fields)
-      try {
-        const updatePayload: any = {};
-        if (formData.name && formData.name !== fullProfile?.name) updatePayload.name = formData.name;
-        if (formData.phone && formData.phone !== fullProfile?.phone) updatePayload.phone = formData.phone;
-        if (formData.governorate && formData.governorate !== fullProfile?.governorate) updatePayload.governorate = formData.governorate;
-        if (formData.city && formData.city !== fullProfile?.city) updatePayload.city = formData.city;
-        if (formData.address && formData.address !== fullProfile?.address) updatePayload.address = formData.address;
 
-        if (Object.keys(updatePayload).length > 0) {
-          await UserService.updateProfile(updatePayload);
-        }
-      } catch (profileErr) {
-        console.error('Failed to auto-save profile details:', profileErr);
-      }
 
       // Build WhatsApp message matching Web Frontend exactly
       const adminWhatsApp = '201097645386';
@@ -545,25 +596,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>المحافظة</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.govScroll}>
-            {EGYPT_GOVERNORATES.map(gov => (
-              <TouchableOpacity 
-                key={gov}
-                style={[
-                  styles.govChip, 
-                  { borderColor: colors.border },
-                  formData.governorate === gov && { backgroundColor: Colors.primary, borderColor: Colors.primary }
-                ]}
-                onPress={() => setFormData({...formData, governorate: gov})}
-              >
-                <Text style={[
-                  { color: colors.text },
-                  formData.governorate === gov && { color: '#fff', fontWeight: 'bold' }
-                ]}>{gov}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <Text style={[styles.label, { color: colors.text }]}>المحافظة *</Text>
+          <TextInput 
+            style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+            value={formData.governorate}
+            onChangeText={(text) => setFormData({...formData, governorate: text})}
+            placeholder="مثلاً: القاهرة أو الجيزة..."
+            placeholderTextColor={colors.textMuted}
+          />
         </View>
 
         <View style={styles.inputGroup}>
@@ -959,14 +999,7 @@ const styles = StyleSheet.create({
     textAlign: 'right'
   },
   textArea: { height: 80, textAlignVertical: 'top', paddingTop: 10 },
-  govScroll: { flexDirection: 'row-reverse', paddingVertical: 5 },
-  govChip: { 
-    paddingHorizontal: 15, 
-    paddingVertical: 8, 
-    borderRadius: 20, 
-    borderWidth: 1, 
-    marginLeft: 10 
-  },
+
   divider: { height: 1, marginVertical: 25 },
   paymentOptionsList: { gap: 12, marginBottom: 25 },
   paymentOption: { 
