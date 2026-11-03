@@ -24,6 +24,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import { getProductPrice, hasProductDiscount, clampQuantity, calculateDiscountPercentage } from '../utils/productHelpers';
 
 
 
@@ -110,10 +111,11 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
   const isFavorite = isInWishlist(product._id || product.id);
   const outOfStock = product.mainQuantity === 0;
-  const hasDiscount = product.priceAfterDiscount && product.priceAfterDiscount < product.price;
+  const hasDiscount = hasProductDiscount(product);
   const discountPercentage = hasDiscount
-      ? Math.round(((product.price - product.priceAfterDiscount) / product.price) * 100)
+      ? calculateDiscountPercentage(product.price, product.priceAfterDiscount)
       : 0;
+  const effectivePrice = getProductPrice(product);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -255,8 +257,8 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
 
           {/* Pricing */}
           <View style={styles.priceRow}>
-            <Text style={styles.price}>{product.priceAfterDiscount || product.price} ج.م</Text>
-            {Number(product.discountAmountProduct) > 0 ? (
+            <Text style={styles.price}>{effectivePrice} ج.م</Text>
+            {hasDiscount ? (
               <View style={styles.discountContainer}>
                 <Text style={styles.oldPrice}>{product.price} ج.م</Text>
                 <View style={styles.badge}>
@@ -332,17 +334,17 @@ export const ProductDetailScreen = ({ route, navigation }: any) => {
       <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom || 10, height: 70 + (insets.bottom || 10) }]}>
         <View style={styles.quantityContainer}>
           <TouchableOpacity 
-            onPress={() => setQuantity(q => Math.max(1, q - 1))}
-            style={[styles.qtyBtn, { borderColor: colors.border, opacity: outOfStock ? 0.5 : 1 }]}
-            disabled={outOfStock}
+            onPress={() => setQuantity(q => clampQuantity(q - 1, product.mainQuantity))}
+            style={[styles.qtyBtn, { borderColor: colors.border, opacity: (outOfStock || quantity <= 1) ? 0.5 : 1 }]}
+            disabled={outOfStock || quantity <= 1}
           >
             <Ionicons name="remove" size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.qtyText, { color: colors.text, opacity: outOfStock ? 0.5 : 1 }]}>{quantity}</Text>
           <TouchableOpacity 
-            onPress={() => setQuantity(q => q + 1)}
-            style={[styles.qtyBtn, { borderColor: colors.border, opacity: outOfStock ? 0.5 : 1 }]}
-            disabled={outOfStock}
+            onPress={() => setQuantity(q => clampQuantity(q + 1, product.mainQuantity))}
+            style={[styles.qtyBtn, { borderColor: colors.border, opacity: (outOfStock || quantity >= product.mainQuantity) ? 0.5 : 1 }]}
+            disabled={outOfStock || quantity >= product.mainQuantity}
           >
             <Ionicons name="add" size={20} color={colors.text} />
           </TouchableOpacity>

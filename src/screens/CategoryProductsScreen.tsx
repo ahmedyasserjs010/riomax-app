@@ -15,19 +15,52 @@ import { useProducts } from '../hooks/useApi';
 import { IProduct } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import { getProductPrice, hasProductDiscount, getProductImage } from '../utils/productHelpers';
+import { RefreshControl } from 'react-native';
 
-
+const placeholderImage = require('../../assets/icon.png');
 const { width } = Dimensions.get('window');
 
 export const CategoryProductsScreen = ({ route, navigation }: any) => {
   const { categoryId, name } = route.params;
   const { colors } = useTheme();
 
-  // Queries — use 'categoryId' to match backend's expected query parameter name
-  const { data: productsData, isLoading: loading } = useProducts({ categoryId, limit: 100 });
-  const products = productsData?.products || [];
+  const [page, setPage] = useState(1);
+  const [products, setProducts] = useState<IProduct[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  if (loading) {
+  // Queries — use 'categoryId' to match backend's expected query parameter name with pagination
+  const { data: productsData, isLoading, isFetching, refetch } = useProducts({ categoryId, page, limit: 12 });
+  const totalPages = productsData?.pagination?.totalPages || 1;
+
+  useEffect(() => {
+    if (productsData?.products) {
+      if (page === 1) {
+        setProducts(productsData.products);
+      } else {
+        setProducts(prev => {
+          const existingIds = new Set(prev.map(p => p._id || p.id));
+          const newProds = productsData.products.filter(p => !existingIds.has(p._id || p.id));
+          return [...prev, ...newProds];
+        });
+      }
+    }
+  }, [productsData, page]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setPage(1);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  const handleLoadMore = () => {
+    if (!isFetching && page < totalPages && !isLoading) {
+      setPage(prev => prev + 1);
+    }
+  };
+
+  if (page === 1 && isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -44,6 +77,18 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
         keyExtractor={(item) => item._id || item.id}
         numColumns={2}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isFetching && page > 1 ? (
+            <View style={{ paddingVertical: 16 }}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="cube-outline" size={60} color={colors.textMuted} />
@@ -51,9 +96,9 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
           </View>
         }
         renderItem={({ item }) => {
-          // Show effective price: priceAfterDiscount if > 0, otherwise base price
-          const effectivePrice = item.priceAfterDiscount > 0 ? item.priceAfterDiscount : item.price;
-          const hasDiscount = Number(item.discountAmountProduct) > 0 && item.priceAfterDiscount > 0;
+          const effectivePrice = getProductPrice(item);
+          const hasDiscount = hasProductDiscount(item);
+          const imageUrl = getProductImage(item);
 
           return (
             <TouchableOpacity 
@@ -61,7 +106,7 @@ export const CategoryProductsScreen = ({ route, navigation }: any) => {
               onPress={() => navigation.navigate('ProductDetail', { productId: item._id || item.id })}
             >
               <Image 
-                source={{ uri: item.images?.[0]?.secure_url }} 
+                source={imageUrl ? { uri: imageUrl } : placeholderImage} 
                 style={styles.productImage} 
                 contentFit="cover" 
               />

@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../api/queryClient';
-import apiClient from '../api/apiClient';
+import apiClient, { setSessionExpiredCallback, markAsLoggedOut, markAsLoggedIn } from '../api/apiClient';
 import { LoginPayload, User } from '../types';
 import { storage } from '../utils/storage';
 
@@ -26,6 +26,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userData, setUserData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Force logout handler — called by apiClient when refresh fails
+  const forceLogout = useCallback(async () => {
+    markAsLoggedOut();
+    await storage.deleteItem('accessToken');
+    await storage.deleteItem('refreshToken');
+    setUserToken(null);
+    setUserData(null);
+    queryClient.clear();
+  }, []);
+
+  // Register session expired callback with apiClient
+  useEffect(() => {
+    setSessionExpiredCallback(forceLogout);
+    return () => {
+      setSessionExpiredCallback(() => {});
+    };
+  }, [forceLogout]);
+
   // Use React Query for profile fetching and caching
   const { data: fullProfile, refetch } = useQuery<User | null>({
     queryKey: ['profile'],
@@ -42,6 +60,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const saveAuthData = async (accessToken: string, refreshToken: string) => {
+    markAsLoggedIn();
     await storage.setItem('accessToken', accessToken);
     await storage.setItem('refreshToken', refreshToken);
     setUserToken(accessToken);
@@ -90,6 +109,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    markAsLoggedOut();
     try {
       await apiClient.post('/auth/logout', { flag: 'logout' });
     } catch (e) {
@@ -109,6 +129,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const token = await storage.getItem('accessToken');
         if (token) {
+          markAsLoggedIn();
           setUserToken(token);
           const decoded = jwtDecode<any>(token);
           setUserData({
@@ -118,9 +139,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: decoded.email,
             role: decoded.role?.toLowerCase(),
           } as User);
+        } else {
+          markAsLoggedOut();
         }
       } catch (e) {
         console.error('Error loading stored auth', e);
+        markAsLoggedOut();
       } finally {
         setIsLoading(false);
       }

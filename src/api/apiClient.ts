@@ -1,7 +1,21 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-export const BASE_URL = 'https://api.riomax.com.eg/api/v1';
+const API_URLS = {
+  production: 'https://api.riomax.com.eg/api/v1',
+  preview: 'https://api-staging.riomax.com.eg/api/v1',
+  development: 'http://localhost:3000/api/v1',
+};
+
+const getBaseUrl = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  const env = (process.env.EXPO_PUBLIC_API_ENV as keyof typeof API_URLS) || 'production';
+  return API_URLS[env] || API_URLS.production;
+};
+
+export const BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -13,6 +27,23 @@ const apiClient = axios.create({
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
+let isLoggedOut = false;
+let sessionExpiredCallback: (() => void) | null = null;
+
+export const setSessionExpiredCallback = (cb: () => void) => {
+  sessionExpiredCallback = cb;
+};
+
+export const markAsLoggedOut = () => {
+  isLoggedOut = true;
+  delete apiClient.defaults.headers.common['Authorization'];
+  processQueue(new Error('User is logged out'), null);
+  failedQueue = [];
+};
+
+export const markAsLoggedIn = () => {
+  isLoggedOut = false;
+};
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -28,6 +59,12 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor to attach token
 apiClient.interceptors.request.use(
   async (config: any) => {
+    if (isLoggedOut) {
+      if (config.headers && config.headers.Authorization) {
+        delete config.headers.Authorization;
+      }
+      return config;
+    }
     try {
       const token = await storage.getItem('accessToken');
       if (token && config.headers) {
@@ -53,11 +90,18 @@ apiClient.interceptors.response.use(
       !originalRequest.url?.includes('/auth/login') && 
       !originalRequest.url?.includes('/auth/refresh-token')
     ) {
+      if (isLoggedOut) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
+            if (isLoggedOut) {
+              return Promise.reject(new Error('User is logged out'));
+            }
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return apiClient(originalRequest);
           })
@@ -69,11 +113,22 @@ apiClient.interceptors.response.use(
 
       try {
         const refreshToken = await storage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+        if (!refreshToken || isLoggedOut) {
+          throw new Error(isLoggedOut ? 'Logged out' : 'No refresh token');
+        }
 
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh-token`, {}, {
-          headers: { Authorization: `Bearer ${refreshToken}` },
-        });
+        const { data } = await axios.post(
+          `${BASE_URL}/auth/refresh-token`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${refreshToken}` },
+            timeout: 15000,
+          }
+        );
+
+        if (isLoggedOut) {
+          throw new Error('Logged out during refresh');
+        }
 
         const { accessToken, refreshToken: newRefresh } = data.data.newCredentials;
 
@@ -86,11 +141,16 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (refreshError) {
+        delete apiClient.defaults.headers.common['Authorization'];
         processQueue(refreshError, null);
         isRefreshing = false;
         
         await storage.deleteItem('accessToken');
         await storage.deleteItem('refreshToken');
+
+        if (sessionExpiredCallback) {
+          sessionExpiredCallback();
+        }
         
         return Promise.reject(refreshError);
       }
@@ -105,3 +165,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+

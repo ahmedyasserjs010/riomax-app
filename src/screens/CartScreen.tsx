@@ -22,6 +22,9 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 import { IProduct } from '../types';
 import { useToast } from '../context/ToastContext';
 import { useGeneralSettings } from '../hooks/useApi';
+import { getProductPrice, hasProductDiscount, getProductImage } from '../utils/productHelpers';
+
+const placeholderImage = require('../../assets/icon.png');
 
 const { width } = Dimensions.get('window');
 
@@ -48,7 +51,9 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors, navigation }: any) => 
 
   if (!product) return null;
 
-  const currentPrice = product.priceAfterDiscount > 0 ? product.priceAfterDiscount : product.price;
+  const currentPrice = getProductPrice(product);
+  const hasDiscount = hasProductDiscount(product);
+  const imageUrl = getProductImage(product);
 
   return (
     <View style={[styles.cartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -57,7 +62,7 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors, navigation }: any) => 
         activeOpacity={0.7}
       >
         <Image 
-          source={{ uri: product.images[0]?.secure_url }} 
+          source={imageUrl ? { uri: imageUrl } : placeholderImage} 
           style={styles.cartImage} 
           contentFit="cover" 
         />
@@ -88,7 +93,7 @@ const CartItemCard = ({ item, onUpdate, onRemove, colors, navigation }: any) => 
 
         <View style={styles.priceRow}>
           <Text style={styles.price}>{currentPrice} ج.م</Text>
-          {Boolean(product.priceAfterDiscount > 0 && product.priceAfterDiscount < product.price) ? (
+          {hasDiscount ? (
             <Text style={styles.oldPrice}>{product.price} ج.م</Text>
           ) : null}
         </View>

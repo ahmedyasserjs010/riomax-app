@@ -26,6 +26,8 @@ import { PublicService } from '../services/PublicService';
 import { storage } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
+import { queryClient } from '../api/queryClient';
+import { safeOpenURL } from '../utils/textHelpers';
 
 const PENDING_ORDER_STORAGE_KEY = 'riomax_pending_order_id';
 const SHIPPING_INFO_STORAGE_KEY = 'riomax_shipping_info';
@@ -332,18 +334,16 @@ export const CheckoutScreen = ({ navigation }: any) => {
         console.error('Failed to refresh cart:', cartErr);
       }
 
-
-
       // Build WhatsApp message matching Web Frontend exactly
       const adminWhatsApp = '201097645386';
-      let message = `*طلب جديد من متجر Riomax*%0a%0a`;
+      let message = `*طلب جديد من متجر Riomax*\n\n`;
 
-      message += `*البيانات الشخصية:*%0a`;
-      message += `- الاسم: ${payload.name}%0a`;
-      message += `- رقم الهاتف: ${payload.phone}%0a`;
-      message += `- المحافظة: ${payload.governorate}%0a`;
-      message += `- المدينة: ${payload.city}%0a`;
-      message += `- العنوان التفصيلي: ${payload.address}%0a%0a`;
+      message += `*البيانات الشخصية:*\n`;
+      message += `- الاسم: ${payload.name}\n`;
+      message += `- رقم الهاتف: ${payload.phone}\n`;
+      message += `- المحافظة: ${payload.governorate}\n`;
+      message += `- المدينة: ${payload.city}\n`;
+      message += `- العنوان التفصيلي: ${payload.address}\n\n`;
 
       // Payment method Arabic translation (matching web frontend)
       let paymentStr = '';
@@ -365,37 +365,38 @@ export const CheckoutScreen = ({ navigation }: any) => {
           paymentStr = payload.paymentMethod;
       }
 
-      message += `*طريقة الدفع:* ${paymentStr}%0a`;
-      message += `*حالة الدفع:* ${statusStr}%0a%0a`;
+      message += `*طريقة الدفع:* ${paymentStr}\n`;
+      message += `*حالة الدفع:* ${statusStr}\n\n`;
 
       // Product list (matching web frontend)
-      message += `*المنتجات المرفقة (*${payload.cart?.items?.length || 0}*):*%0a`;
+      message += `*المنتجات المرفقة (*${payload.cart?.items?.length || 0}*):*\n`;
       if (payload.cart?.items) {
         payload.cart.items.forEach((item: any, index: number) => {
           const product = item.Products;
           const price = product?.priceAfterDiscount || product?.price || 0;
-          message += `${index + 1}. ${product?.name} (الكمية: ${item.quantity}) - السعر: ${price} ج.م%0a`;
+          message += `${index + 1}. ${product?.name} (الكمية: ${item.quantity}) - السعر: ${price} ج.م\n`;
         });
       }
-      message += `%0a`;
+      message += `\n`;
 
-      message += `*تفاصيل الفاتورة:*%0a`;
-      message += `- المجموع الفرعي: ${payload.subtotal.toFixed(2)} ج.م%0a`;
+      message += `*تفاصيل الفاتورة:*\n`;
+      message += `- المجموع الفرعي: ${payload.subtotal.toFixed(2)} ج.م\n`;
       if (payload.vat) {
-        message += `- ضريبة القيمة المضافة: ${payload.vat.toFixed(2)} ج.م%0a`;
+        message += `- ضريبة القيمة المضافة: ${payload.vat.toFixed(2)} ج.م\n`;
       }
-      message += `- مصاريف شحن مبدئية: 75 ج.م%0a`;
+      message += `- مصاريف شحن مبدئية: 75 ج.م\n`;
       if (payload.couponDiscount > 0) {
-        message += `- خصم الكوبون: -${payload.couponDiscount.toFixed(2)} ج.م%0a`;
+        message += `- خصم الكوبون: -${payload.couponDiscount.toFixed(2)} ج.م\n`;
       }
-      message += `- الإجمالي النهائي: *${payload.total.toFixed(2)} ج.م*%0a`;
-      message += `%0a*(ملاحظة: سعر الشحن قد يتم تعديله حسب الموقع)*%0a`;
+      message += `- الإجمالي النهائي: *${payload.total.toFixed(2)} ج.م*\n\n`;
+      message += `*(ملاحظة: سعر الشحن قد يتم تعديله حسب الموقع)*\n`;
 
-      // Open WhatsApp automatically (matching web frontend behavior)
-      Linking.openURL(`https://wa.me/${adminWhatsApp}?text=${message}`);
+      // Open WhatsApp automatically with full URL encoding and safe handling
+      const whatsappUrl = `https://wa.me/${adminWhatsApp}?text=${encodeURIComponent(message)}`;
+      await safeOpenURL(whatsappUrl, 'تعذر فتح تطبيق واتساب. يرجى التأكد من تثبيت التطبيق.');
 
       showToast('تم إجراء الفاتورة بنجاح!', 'success');
-      // Navigate to Invoices page (matching web: router.push('/userInvoices'))
+      // Invalidate invoices cache and navigate
       finishCheckout();
     } catch (err: any) {
       showToast(err.message || 'فشل في إتمام الطلب', 'error');
@@ -522,6 +523,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
   };
 
   const finishCheckout = () => {
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
     navigation.reset({
       index: 0,
       routes: [

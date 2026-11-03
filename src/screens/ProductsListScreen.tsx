@@ -31,6 +31,7 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
   const initialSearch = route.params?.initialSearch || '';
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [subCategories, setSubCategories] = useState<ISubCategory[]>([]);
@@ -38,16 +39,24 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Debounce search query (400ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Queries
   const { data: categoriesData, refetch: refetchCategories, isLoading: categoriesLoading } = useCategoriesTree();
 
   const queryParams = useMemo(() => {
     const params: any = { page, limit: 10 };
-    if (searchQuery.trim() !== '') params.keyword = searchQuery;
+    if (debouncedSearch.trim() !== '') params.keyword = debouncedSearch;
     if (selectedCategory) params.categoryId = selectedCategory;
     if (selectedSubCategory) params.subCategoryId = selectedSubCategory;
     return params;
-  }, [page, searchQuery, selectedCategory, selectedSubCategory]);
+  }, [page, debouncedSearch, selectedCategory, selectedSubCategory]);
 
   const { data: productsData, isLoading: productsLoading, isFetching: productsFetching, refetch: refetchProducts } = useProducts(queryParams);
 
@@ -73,8 +82,9 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
     }
   }, [productsData, page]);
 
-  // Sync SubCategories when Category changes
+  // Sync SubCategories when Category changes and reset selected subcategory
   useEffect(() => {
+    setSelectedSubCategory(null);
     if (selectedCategory && categories.length > 0) {
       const cat = categories.find(c => c._id === selectedCategory || c.id === selectedCategory);
       setSubCategories(cat?.subCategories || []);
@@ -83,10 +93,11 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
     }
   }, [selectedCategory, categories]);
 
-  // Reset page to 1 when filters change
+  // Reset page to 1 and clear products when filters change
   useEffect(() => {
     setPage(1);
-  }, [selectedCategory, selectedSubCategory]);
+    setProducts([]);
+  }, [selectedCategory, selectedSubCategory, debouncedSearch]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -99,8 +110,8 @@ export const ProductsListScreen = ({ navigation, route }: any) => {
   };
 
   const handleSearchSubmit = () => {
+    setDebouncedSearch(searchQuery);
     setPage(1);
-    refetchProducts();
   };
 
   const handleLoadMore = () => {

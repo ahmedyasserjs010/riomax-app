@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
 import { AuthGuard } from '../components/AuthGuard';
 import { useToast } from '../context/ToastContext';
+import { escapeHtml } from '../utils/textHelpers';
 
 const { width } = Dimensions.get('window');
 
@@ -142,22 +143,43 @@ export const InvoicesScreen = () => {
   };
 
   const generateInvoicePDF = async (order: any) => {
-    const productsHtml = order.items?.map((item: any, index: number) => `
-      <tr>
-        <td>${index + 1}</td>
-        <td>${item.productName || item.product?.name || 'منتج'}</td>
-        <td>${item.quantity || 1}</td>
-        <td>${(item.price || 0).toLocaleString()} ج.م</td>
-        <td>${((item.price || 0) * (item.quantity || 1)).toLocaleString()} ج.م</td>
-      </tr>
-    `).join('') || '';
+    const productsHtml = order.items?.map((item: any, index: number) => {
+      const name = escapeHtml(item.productName || item.product?.name || 'منتج');
+      const qty = Number(item.quantity ?? 1);
+      const price = Number(item.price ?? 0);
+      const total = price * qty;
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${name}</td>
+          <td>${qty}</td>
+          <td>${price.toLocaleString()} ج.م</td>
+          <td>${total.toLocaleString()} ج.م</td>
+        </tr>
+      `;
+    }).join('') || '';
+
+    const orderNumber = escapeHtml(order.orderNumber || order.id?.substring(0, 8) || '');
+    const userName = escapeHtml(order.user?.name || order.user?.firstName || 'عميل');
+    const phone = escapeHtml(order.phone || order.shippingAddress?.phone || '');
+    const governorate = escapeHtml(order.governorate || order.shippingAddress?.governorate || '');
+    const address = escapeHtml(order.address || order.shippingAddress?.address || '');
+    const paymentMethod = escapeHtml(order.paymentMethod === 'cash_on_delivery' ? 'الدفع عند الاستلام' : (order.paymentMethod || ''));
+    const orderDate = new Date(order.createdAt).toLocaleDateString('ar-EG');
+
+    const subtotal = Number(order.subtotal ?? order.total ?? 0);
+    const shippingCost = Number(order.shippingCost ?? 75);
+    const vatPercentage = Number(order.vatPercentage ?? 0);
+    const vatAmount = Number(order.vatAmount ?? 0);
+    const couponDiscount = Number(order.couponDiscount ?? 0);
+    const grandTotal = Number(order.total ?? 0);
 
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="ar" dir="rtl">
       <head>
         <meta charset="UTF-8">
-        <title>فاتورة طلب #${order.orderNumber || order.id?.substring(0, 8)}</title>
+        <title>فاتورة طلب #${orderNumber}</title>
         <style>
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
           .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ff6b00; padding-bottom: 20px; }
@@ -182,16 +204,16 @@ export const InvoicesScreen = () => {
         <div class="details-section">
           <div style="text-align: right;">
             <strong>بيانات العميل:</strong><br>
-            الاسم: ${order.user?.name || order.user?.firstName || 'عميل'}<br>
-            الهاتف: ${order.phone || order.shippingAddress?.phone || ''}<br>
-            المحافظة: ${order.governorate || order.shippingAddress?.governorate || ''}<br>
-            العنوان: ${order.address || order.shippingAddress?.address || ''}
+            الاسم: ${userName}<br>
+            الهاتف: ${phone}<br>
+            المحافظة: ${governorate}<br>
+            العنوان: ${address}
           </div>
           <div style="text-align: left;">
             <strong>تفاصيل الطلب:</strong><br>
-            رقم الطلب: #${order.orderNumber || order.id?.substring(0, 8)}<br>
-            التاريخ: ${new Date(order.createdAt).toLocaleDateString('ar-EG')}<br>
-            طريقة الدفع: ${order.paymentMethod === 'cash_on_delivery' ? 'الدفع عند الاستلام' : order.paymentMethod}
+            رقم الطلب: #${orderNumber}<br>
+            التاريخ: ${orderDate}<br>
+            طريقة الدفع: ${paymentMethod}
           </div>
         </div>
 
@@ -213,27 +235,27 @@ export const InvoicesScreen = () => {
         <div class="summary">
           <div class="summary-row">
             <span>المجموع الفرعي:</span>
-            <span>${(order.subtotal || order.total || 0).toLocaleString()} ج.م</span>
+            <span>${subtotal.toLocaleString()} ج.م</span>
           </div>
           <div class="summary-row">
             <span>مصاريف الشحن:</span>
-            <span>${(order.shippingCost || 75).toLocaleString()} ج.م</span>
+            <span>${shippingCost.toLocaleString()} ج.م</span>
           </div>
-          ${order.vatPercentage > 0 ? `
+          ${vatPercentage > 0 ? `
           <div class="summary-row">
-            <span>ضريبة القيمة المضافة (${order.vatPercentage}%):</span>
-            <span>${(order.vatAmount || 0).toLocaleString()} ج.م</span>
+            <span>ضريبة القيمة المضافة (${vatPercentage}%):</span>
+            <span>${vatAmount.toLocaleString()} ج.م</span>
           </div>
           ` : ''}
-          ${order.couponDiscount > 0 ? `
+          ${couponDiscount > 0 ? `
           <div class="summary-row" style="color: #4caf50;">
             <span>خصم الكوبون:</span>
-            <span>-${(order.couponDiscount || 0).toLocaleString()} ج.م</span>
+            <span>-${couponDiscount.toLocaleString()} ج.م</span>
           </div>
           ` : ''}
           <div class="summary-row total">
             <span>الإجمالي الكلي:</span>
-            <span>${(order.total || 0).toLocaleString()} ج.م</span>
+            <span>${grandTotal.toLocaleString()} ج.م</span>
           </div>
         </div>
 

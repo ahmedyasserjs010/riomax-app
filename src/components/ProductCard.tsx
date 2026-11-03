@@ -5,6 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
+import { getProductPrice, hasProductDiscount, getProductImage } from '../utils/productHelpers';
+
+const placeholderImage = require('../../assets/icon.png');
 
 interface ProductCardProps {
   product: IProduct;
@@ -31,6 +34,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const { colors, isDark } = useTheme();
   
   const isOutOfStock = product.mainQuantity === 0;
+  const effectivePrice = getProductPrice(product);
+  const hasDiscount = hasProductDiscount(product);
+  const imageUrl = getProductImage(product);
 
   return (
     <TouchableOpacity 
@@ -44,7 +50,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Product Image */}
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: product.images[0]?.secure_url }} 
+          source={imageUrl ? { uri: imageUrl } : placeholderImage} 
           style={styles.image} 
           contentFit="contain" 
         />
@@ -92,8 +98,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Price */}
         <View style={styles.priceSection}>
-          <Text style={styles.priceText}>{product.priceAfterDiscount || product.price} ج.م</Text>
-          {Number(product.discountAmountProduct) > 0 ? (
+          <Text style={styles.priceText}>{effectivePrice} ج.م</Text>
+          {hasDiscount ? (
             <Text style={styles.oldPrice}>{product.price} ج.م</Text>
           ) : null}
         </View>
