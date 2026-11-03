@@ -5,6 +5,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ConfirmEmailScreen } from '../screens/ConfirmEmailScreen';
+import { ConfirmPhoneScreen } from '../screens/ConfirmPhoneScreen';
 import { AuthStackParamList } from './navigationTypes';
 import { screenTransitions } from './navigationConfig';
 
@@ -45,6 +46,11 @@ export const AuthStack = () => {
         name="ConfirmEmail" 
         component={ConfirmEmailScreen} 
         options={{ title: 'تأكيد الحساب' }} 
+      />
+      <Stack.Screen 
+        name="ConfirmPhone" 
+        component={ConfirmPhoneScreen} 
+        options={{ title: 'تأكيد رقم الهاتف' }} 
       />
     </Stack.Navigator>
   );
