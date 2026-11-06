@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ScrollView,
-  Image
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -18,23 +17,49 @@ import { Ionicons } from '@expo/vector-icons';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { useToast } from '../context/ToastContext';
 
+/** دالة مساعدة: هل القيمة رقم هاتف؟ */
+const isPhoneNumber = (value: string) => /^\+?[0-9]{7,15}$/.test(value.trim());
+const isEmailValue = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 export const LoginScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { login } = useUser();
   const { showToast } = useToast();
-  const [phone, setPhone] = useState('');
+  // حقل موحد يقبل رقم الهاتف أو البريد الإلكتروني
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // نوع الحقل الحالي
+  const identifierType = isPhoneNumber(identifier)
+    ? 'phone'
+    : isEmailValue(identifier)
+    ? 'email'
+    : 'unknown';
+
   const handleLogin = async () => {
-    if (!phone.trim() || !password) {
-      showToast('يرجى إدخال رقم الهاتف وكلمة المرور', 'info');
+    if (!identifier.trim() || !password) {
+      showToast('يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور', 'info');
       return;
     }
+
+    const trimmed = identifier.trim();
+    const isPhone = isPhoneNumber(trimmed);
+    const isEmail = isEmailValue(trimmed);
+
+    if (!isPhone && !isEmail) {
+      showToast('يرجى إدخال رقم هاتف صحيح أو بريد إلكتروني صحيح', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
-      await login({ phone: phone.trim(), password });
+      const payload = isPhone
+        ? { phone: trimmed, password }
+        : { email: trimmed.toLowerCase(), password };
+
+      await login(payload);
       showToast('أهلاً بك مجدداً في ريوماكس! 🎉', 'success');
       navigation.reset({
         index: 0,
@@ -46,7 +71,11 @@ export const LoginScreen = ({ navigation }: any) => {
       showToast(msg, 'error');
 
       if (isUnverified) {
-        navigation.navigate('ConfirmPhone', { phone: err.response?.data?.phone || phone.trim() });
+        if (isPhone) {
+          navigation.navigate('ConfirmPhone', { phone: err.response?.data?.phone || trimmed });
+        } else if (isEmail) {
+          navigation.navigate('ConfirmEmail', { email: trimmed.toLowerCase() });
+        }
       }
     } finally {
       setLoading(false);
@@ -65,7 +94,7 @@ export const LoginScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.form}>
-          {/* ─── الطريقة الأولى: زر Google الموجود أعلى الصفحة ────── */}
+          {/* ─── زر Google (أعلى الصفحة) ───────────────────────────────── */}
           <GoogleAuthButton 
             onLoginSuccess={() => {
               navigation.reset({
@@ -75,36 +104,52 @@ export const LoginScreen = ({ navigation }: any) => {
             }} 
           />
 
-          {/* الرسالة التوضيحية أسفل زر Google */}
           <Text style={[styles.googleHint, { color: colors.textMuted }]}>
-            يمكنك تسجيل الدخول من حساب Google الخاص بك من هنا بضغطة واحدة.
+            يمكنك تسجيل الدخول من حساب Google الخاص بك بضغطة واحدة.
           </Text>
 
-          {/* ─── فاصل ─────────────────────────────────────────────── */}
+          {/* ─── فاصل ───────────────────────────────────────────────────── */}
           <View style={styles.dividerContainer}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو برقم الهاتف وكلمة المرور</Text>
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو بكلمة المرور</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          {/* ─── حقل رقم الهاتف ───────────────────────────────────── */}
+          {/* ─── حقل الهاتف أو الإيميل الموحد ─────────────────────────── */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>رقم الهاتف</Text>
+            <Text style={[styles.label, { color: colors.text }]}>رقم الهاتف أو البريد الإلكتروني</Text>
             <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Ionicons name="call-outline" size={20} color={colors.textMuted} />
+              <Ionicons 
+                name={identifierType === 'email' ? 'mail-outline' : 'call-outline'} 
+                size={20} 
+                color={identifierType === 'phone' ? Colors.primary : identifierType === 'email' ? '#3B82F6' : colors.textMuted} 
+              />
               <TextInput 
                 style={[styles.input, { color: colors.text }]}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="01012345678"
+                value={identifier}
+                onChangeText={setIdentifier}
+                placeholder="01012345678 أو email@example.com"
                 placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 textAlign="left"
+                autoComplete="tel"
               />
             </View>
+            {/* رسالة توضيحية حسب نوع الإدخال */}
+            {identifierType === 'phone' && (
+              <Text style={[styles.inputHint, { color: Colors.primary }]}>
+                📱 سيتم التحقق عبر واتساب
+              </Text>
+            )}
+            {identifierType === 'email' && (
+              <Text style={[styles.inputHint, { color: '#3B82F6' }]}>
+                📧 سيتم التحقق عبر البريد الإلكتروني
+              </Text>
+            )}
           </View>
 
-          {/* ─── حقل كلمة المرور ─────────────────────────────────── */}
+          {/* ─── حقل كلمة المرور ────────────────────────────────────────── */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>كلمة المرور</Text>
             <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -117,30 +162,16 @@ export const LoginScreen = ({ navigation }: any) => {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
                 textAlign="left"
+                autoComplete="password"
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.textMuted} />
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* ─── الطريقة الثانية: زر Google بجوار نسيت كلمة المرور ───── */}
+          {/* ─── نسيت كلمة المرور ──────────────────────────────────────── */}
           <View style={styles.optionsRow}>
-            {/* زر التسجيل بحساب Google */}
-            <View style={{ flex: 1 }}>
-              <GoogleAuthButton 
-                buttonTitle="التسجيل بحساب Google"
-                compact={true}
-                onLoginSuccess={() => {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'MainTabs' }],
-                  });
-                }} 
-              />
-            </View>
-
-            {/* نسيت كلمة المرور */}
             <TouchableOpacity 
               style={styles.forgotBtn}
               onPress={() => navigation.navigate('ForgotPassword')}
@@ -149,7 +180,7 @@ export const LoginScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
 
-          {/* ─── زر تسجيل الدخول ───────────────────────────────────── */}
+          {/* ─── زر تسجيل الدخول ───────────────────────────────────────── */}
           <TouchableOpacity 
             style={[styles.loginBtn, { backgroundColor: loading ? colors.border : Colors.primary }]}
             onPress={handleLogin}
@@ -158,7 +189,7 @@ export const LoginScreen = ({ navigation }: any) => {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>تسجيل الدخول</Text>}
           </TouchableOpacity>
 
-          {/* ─── الانتقال لإنشاء حساب ──────────────────────────────── */}
+          {/* ─── الانتقال لإنشاء حساب ──────────────────────────────────── */}
           <View style={styles.registerRow}>
             <Text style={{ color: colors.textMuted }}>ليس لديك حساب؟ </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -199,12 +230,12 @@ const styles = StyleSheet.create({
     gap: 12
   },
   input: { flex: 1, height: '100%', fontSize: 15, textAlign: 'left' },
+  inputHint: { fontSize: 11, marginTop: 4, fontWeight: '500' },
   optionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginBottom: 25,
-    gap: 10,
   },
   forgotBtn: { paddingVertical: 6 },
   forgotText: { color: Colors.primary, fontWeight: '600', fontSize: 13 },

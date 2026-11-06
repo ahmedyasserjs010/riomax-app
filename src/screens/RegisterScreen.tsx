@@ -17,6 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { useToast } from '../context/ToastContext';
 
+/** دالة مساعدة: هل القيمة رقم هاتف؟ */
+const isPhoneNumber = (value: string) => /^\+?[0-9]{7,15}$/.test(value.trim());
+const isEmailValue = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 export const RegisterScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { showToast } = useToast();
@@ -24,30 +28,42 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // الحقول المطلوبة فقط: الاسم، رقم الهاتف، كلمة المرور، تأكيد كلمة المرور
+  // حقل موحد يقبل رقم الهاتف أو البريد الإلكتروني
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
+    identifier: '',  // رقم الهاتف أو البريد الإلكتروني
     password: '',
     confirmPassword: ''
   });
 
+  // نوع الحقل الحالي
+  const identifierType = isPhoneNumber(formData.identifier)
+    ? 'phone'
+    : isEmailValue(formData.identifier)
+    ? 'email'
+    : 'unknown';
+
   const handleRegister = async () => {
-    const { name, phone, password, confirmPassword } = formData;
+    const { name, identifier, password, confirmPassword } = formData;
     
-    // التحقق من إدخال جميع الحقول
-    if (!name.trim() || !phone.trim() || !password || !confirmPassword) {
+    if (!name.trim() || !identifier.trim() || !password || !confirmPassword) {
       showToast('يرجى ملء جميع الحقول المطلوبة', 'info');
       return;
     }
 
-    // التحقق من شرط كلمة المرور (6 أحرف أو أرقام على الأقل)
+    const isPhone = isPhoneNumber(identifier.trim());
+    const isEmail = isEmailValue(identifier.trim());
+
+    if (!isPhone && !isEmail) {
+      showToast('يرجى إدخال رقم هاتف صحيح أو بريد إلكتروني صحيح', 'error');
+      return;
+    }
+
     if (password.length < 6) {
       showToast('يجب أن تتكون كلمة المرور من 6 أحرف أو أرقام على الأقل', 'error');
       return;
     }
 
-    // التحقق من تطابق كلمتي المرور
     if (password !== confirmPassword) {
       showToast('كلمتا المرور غير متطابقتين', 'error');
       return;
@@ -55,18 +71,30 @@ export const RegisterScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
-      const response: any = await apiClient.post('/auth/register', {
-        name: name.trim(),
-        phone: phone.trim(),
-        password,
-        confirmPassword,
-      });
+      const payload = isPhone
+        ? {
+            name: name.trim(),
+            phone: identifier.trim(),
+            password,
+            confirmPassword,
+          }
+        : {
+            name: name.trim(),
+            email: identifier.trim().toLowerCase(),
+            password,
+            confirmPassword,
+          };
 
-      const phoneParam = response?.data?.data?.phone || phone.trim();
-      showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك 📱', 'success');
-      
-      // الانتقال التلقائي والسلس إلى شاشة إدخال رمز التحقق
-      navigation.navigate('ConfirmPhone', { phone: phoneParam });
+      const response: any = await apiClient.post('/auth/register', payload);
+
+      if (isPhone) {
+        const phoneParam = response?.data?.data?.phone || identifier.trim();
+        showToast('تم إرسال رمز التحقق (OTP) إلى واتساب 📱', 'success');
+        navigation.navigate('ConfirmPhone', { phone: phoneParam });
+      } else {
+        showToast('تم إرسال رمز التحقق إلى بريدك الإلكتروني 📧', 'success');
+        navigation.navigate('ConfirmEmail', { email: identifier.trim().toLowerCase() });
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'فشل إنشاء الحساب، يرجى المحاولة لاحقاً';
       showToast(msg, 'error');
@@ -84,12 +112,12 @@ export const RegisterScreen = ({ navigation }: any) => {
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>إنشاء حساب جديد</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            انضم إلى ريوماكس اليوم وتمتع بأفضل تجربة تسوق
+            انضم إلى ريوماكس وتمتع بأفضل تجربة تسوق
           </Text>
         </View>
 
         <View style={styles.form}>
-          {/* ─── زر Google الموجود أعلى صفحة إنشاء الحساب ─────────── */}
+          {/* ─── زر Google ──────────────────────────────────────────────── */}
           <GoogleAuthButton 
             isRegister={true}
             onLoginSuccess={() => {
@@ -100,19 +128,18 @@ export const RegisterScreen = ({ navigation }: any) => {
             }} 
           />
 
-          {/* الرسالة التوضيحية أسفل زر Google */}
           <Text style={[styles.googleHint, { color: colors.textMuted }]}>
-            يمكنك تسجيل الدخول من حساب Google الخاص بك من هنا بضغطة واحدة.
+            يمكنك التسجيل من حساب Google الخاص بك بضغطة واحدة.
           </Text>
 
-          {/* ─── فاصل ─────────────────────────────────────────────── */}
+          {/* ─── فاصل ────────────────────────────────────────────────────── */}
           <View style={styles.dividerContainer}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو إنشاء حساب برقم الهاتف</Text>
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو إنشاء حساب</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          {/* 1. حقل الاسم الكامل */}
+          {/* 1. الاسم الكامل */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>الاسم الكامل</Text>
             <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -124,28 +151,45 @@ export const RegisterScreen = ({ navigation }: any) => {
                 placeholder="أحمد محمد"
                 placeholderTextColor={colors.textMuted}
                 textAlign="right"
+                autoComplete="name"
               />
             </View>
           </View>
 
-          {/* 2. حقل رقم الهاتف */}
+          {/* 2. حقل موحد: رقم الهاتف أو البريد الإلكتروني */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>رقم الهاتف</Text>
+            <Text style={[styles.label, { color: colors.text }]}>رقم الهاتف أو البريد الإلكتروني</Text>
             <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Ionicons name="call-outline" size={20} color={colors.textMuted} />
+              <Ionicons 
+                name={identifierType === 'email' ? 'mail-outline' : 'call-outline'} 
+                size={20} 
+                color={identifierType === 'phone' ? Colors.primary : identifierType === 'email' ? '#3B82F6' : colors.textMuted} 
+              />
               <TextInput 
                 style={[styles.input, { color: colors.text }]}
-                value={formData.phone}
-                onChangeText={(t) => setFormData({...formData, phone: t})}
-                placeholder="01012345678"
+                value={formData.identifier}
+                onChangeText={(t) => setFormData({...formData, identifier: t})}
+                placeholder="01012345678 أو email@example.com"
                 placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 textAlign="left"
+                autoComplete="tel"
               />
             </View>
+            {identifierType === 'phone' && (
+              <Text style={[styles.inputHint, { color: Colors.primary }]}>
+                📱 سيُرسَل رمز التحقق على واتساب
+              </Text>
+            )}
+            {identifierType === 'email' && (
+              <Text style={[styles.inputHint, { color: '#3B82F6' }]}>
+                📧 سيُرسَل رمز التحقق إلى بريدك الإلكتروني
+              </Text>
+            )}
           </View>
 
-          {/* 3. حقل كلمة المرور */}
+          {/* 3. كلمة المرور */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>
               كلمة المرور (6 أحرف أو أرقام على الأقل)
@@ -160,14 +204,15 @@ export const RegisterScreen = ({ navigation }: any) => {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
                 textAlign="left"
+                autoComplete="new-password"
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.textMuted} />
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* 4. حقل تأكيد كلمة المرور */}
+          {/* 4. تأكيد كلمة المرور */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>تأكيد كلمة المرور</Text>
             <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -180,9 +225,10 @@ export const RegisterScreen = ({ navigation }: any) => {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showConfirmPassword}
                 textAlign="left"
+                autoComplete="new-password"
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.textMuted} />
+                <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -196,7 +242,13 @@ export const RegisterScreen = ({ navigation }: any) => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.registerBtnText}>إنشاء حساب جديد</Text>
+              <Text style={styles.registerBtnText}>
+                {identifierType === 'phone'
+                  ? '📱 إنشاء الحساب والتحقق عبر واتساب'
+                  : identifierType === 'email'
+                  ? '📧 إنشاء الحساب والتحقق عبر الإيميل'
+                  : 'إنشاء حساب جديد'}
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -241,6 +293,7 @@ const styles = StyleSheet.create({
     gap: 12
   },
   input: { flex: 1, height: '100%', fontSize: 15 },
+  inputHint: { fontSize: 11, marginTop: 4, fontWeight: '500' },
   registerBtn: { 
     height: 55, 
     borderRadius: 12, 
@@ -253,7 +306,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3
   },
-  registerBtnText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  registerBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   loginLink: { color: Colors.primary, fontWeight: 'bold' },
 });
