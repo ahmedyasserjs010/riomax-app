@@ -13,8 +13,6 @@ interface UserContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
-  verifyPhoneOTP: (phone: string, otp: string) => Promise<void>;
-  confirmEmail: (email: string, otp: string) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
   saveAuthData: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -100,26 +98,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verifyPhoneOTP = async (phone: string, otp: string) => {
-    try {
-      const response = await apiClient.post('/auth/verify-phone-otp', { phone, otp }) as any;
-      const { accessToken, refreshToken } = response.data.data.newCredentials;
-      await saveAuthData(accessToken, refreshToken);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const confirmEmail = async (email: string, otp: string) => {
-    try {
-      const response = await apiClient.patch('/auth/confirm-email', { email, otp }) as any;
-      const { accessToken, refreshToken } = response.data.data.newCredentials;
-      await saveAuthData(accessToken, refreshToken);
-    } catch (error) {
-      throw error;
-    }
-  };
-
   const googleLogin = async (credential: string) => {
     try {
       const response = await apiClient.post('/auth/social-login-google', { token: credential }) as any;
@@ -183,8 +161,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!userToken,
         isLoading,
         login,
-        verifyPhoneOTP,
-        confirmEmail,
         googleLogin,
         saveAuthData,
         logout,

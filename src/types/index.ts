@@ -1,16 +1,7 @@
 // Auth Types
 export interface LoginPayload {
-  email?: string;
-  phone?: string;
+  email: string;
   password: string;
-}
-
-export interface RegisterPhonePayload {
-  name: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  role?: string;
 }
 
 export interface RegisterPayload {

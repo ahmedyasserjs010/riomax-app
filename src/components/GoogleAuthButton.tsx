@@ -9,15 +9,8 @@ import apiClient from '../api/apiClient';
 
 const WEBSITE_BASE = 'https://riomax.com.eg';
 
-export const GoogleAuthButton = ({ 
-  isRegister = false, 
-  buttonTitle,
-  compact = false,
-  onLoginSuccess 
-}: {
+export const GoogleAuthButton = ({ isRegister = false, onLoginSuccess }: {
   isRegister?: boolean;
-  buttonTitle?: string;
-  compact?: boolean;
   onLoginSuccess: () => void;
 }) => {
   const { colors } = useTheme();
@@ -69,27 +62,22 @@ export const GoogleAuthButton = ({
     }
   };
 
-  const title = buttonTitle || (isRegister ? 'الاستمرار باستخدام Google' : 'تسجيل الدخول باستخدام Google');
-
   return (
     <TouchableOpacity
-      style={[
-        compact ? styles.compactButton : styles.button, 
-        { backgroundColor: colors.card, borderColor: colors.border }
-      ]}
+      style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={handleGoogleAuth}
       disabled={loading}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={colors.text} />
+        <ActivityIndicator color={colors.text} />
       ) : (
         <View style={styles.content}>
           <Image
             source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }}
-            style={compact ? styles.compactIcon : styles.icon}
+            style={styles.icon}
           />
-          <Text style={[compact ? styles.compactText : styles.text, { color: colors.text }]}>
-            {title}
+          <Text style={[styles.text, { color: colors.text }]}>
+            {isRegister ? 'الاستمرار باستخدام Google' : 'تسجيل الدخول باستخدام Google'}
           </Text>
         </View>
       )}
@@ -99,46 +87,30 @@ export const GoogleAuthButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    height: 55,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  compactButton: {
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 12,
   },
   icon: {
-    width: 22,
-    height: 22,
-  },
-  compactIcon: {
-    width: 16,
-    height: 16,
+    width: 24,
+    height: 24,
   },
   text: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  compactText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
 });
