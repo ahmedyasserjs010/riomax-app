@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_android:
+    name: Build & Submit Android
     runs-on: ubuntu-latest
 
     steps:
@@ -36,10 +37,35 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas build --platform android --profile production --non-interactive --wait
 
-      - name: Submit Android
+      - name: Submit Android to Google Play
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit --platform android --profile production --latest --non-interactive
+        run: eas submit --platform android --profile production --latest --non-interactive --no-wait
+
+  build_ios:
+    name: Build & Submit iOS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Expo Login
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas whoami
 
       - name: Build iOS
         env:
@@ -49,4 +75,4 @@ jobs:
       - name: Submit iOS to App Store Connect
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit --platform ios --profile production --latest --non-interactive
+        run: eas submit --platform ios --profile production --latest --non-interactive --no-wait
