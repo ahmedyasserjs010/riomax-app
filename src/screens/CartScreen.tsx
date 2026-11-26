@@ -215,18 +215,7 @@ export const CartScreen = ({ navigation }: any) => {
     );
   };
 
-  if (!isAuthenticated) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <AuthGuard 
-          title="لم يتم اضافة منتجات بعد" 
-          subtitle="قم بتسجيل الدخول اولا واضف المنتجات"
-        >
-          <View />
-        </AuthGuard>
-      </View>
-    );
-  }
+
 
   if (isLoading && cartItems.length === 0) {
     return (

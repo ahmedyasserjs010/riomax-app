@@ -27,6 +27,7 @@ import { storage } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { IProduct } from '../types';
 import { queryClient } from '../api/queryClient';
+import apiClient from '../api/apiClient';
 import { safeOpenURL } from '../utils/textHelpers';
 
 const PENDING_ORDER_STORAGE_KEY = 'riomax_pending_order_id';
@@ -36,13 +37,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const { showToast } = useToast();
   const { cartItems, refreshCart, cartCount } = useCart();
-  const { userData, fullProfile, refreshProfile } = useUser();
+  const { userData, fullProfile, refreshProfile, isAuthenticated } = useUser();
   const insets = useSafeAreaInsets();
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: fullProfile?.name || userData?.name || '',
     phone: fullProfile?.phone || '',
+    email: fullProfile?.email || userData?.email || '',
     governorate: fullProfile?.governorate || '',
     city: fullProfile?.city || '',
     address: fullProfile?.address || '',
@@ -82,6 +84,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
             ...prev,
             name: prev.name || parsed.name || '',
             phone: prev.phone || parsed.phone || '',
+            email: prev.email || parsed.email || '',
             governorate: prev.governorate || parsed.governorate || '',
             city: prev.city || parsed.city || '',
             address: prev.address || parsed.address || '',
@@ -101,6 +104,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
         ...prev,
         name: fullProfile.name || prev.name || userData?.name || '',
         phone: fullProfile.phone || prev.phone || '',
+        email: fullProfile.email || prev.email || userData?.email || '',
         governorate: fullProfile.governorate || prev.governorate || '',
         city: fullProfile.city || prev.city || '',
         address: fullProfile.address || prev.address || '',
@@ -115,6 +119,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       await storage.setItem(SHIPPING_INFO_STORAGE_KEY, JSON.stringify({
         name: currentData.name.trim(),
         phone: currentData.phone.trim(),
+        email: currentData.email.trim(),
         governorate: currentData.governorate.trim(),
         city: currentData.city.trim(),
         address: currentData.address.trim(),
@@ -257,8 +262,9 @@ export const CheckoutScreen = ({ navigation }: any) => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
-      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة بما فيها المحافظة والمدينة / المركز');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.email.trim() || !emailRegex.test(formData.email.trim()) || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
+      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة بما فيها البريد الإلكتروني والمحافظة والمدينة / المركز');
       return;
     }
 
@@ -275,6 +281,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       const payload = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
+        email: formData.email.trim().toLowerCase(),
         address: formData.address.trim(),
         governorate: formData.governorate.trim(),
         city: formData.city.trim(),
@@ -298,6 +305,21 @@ export const CheckoutScreen = ({ navigation }: any) => {
         vat,
         shippingCost: shipping
       };
+
+      // If guest (not logged in), save checkout form and navigate to OTP verification
+      if (!isAuthenticated) {
+        await storage.setItem('riomax_guest_checkout_form', JSON.stringify(payload));
+        try {
+          await apiClient.post('/auth/checkout-otp/send', { email: formData.email.trim().toLowerCase() });
+          showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني', 'success');
+          navigation.navigate('CheckoutOtp', { email: formData.email.trim().toLowerCase() });
+        } catch (otpErr: any) {
+          Alert.alert('خطأ', otpErr.message || 'فشل إرسال كود التحقق. يرجى التأكد من البريد الإلكتروني.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
 
       // Online Payment with Paymob
       if (formData.paymentMethod === 'paymob_card' || formData.paymentMethod === 'paymob_wallet') {
@@ -593,6 +615,19 @@ export const CheckoutScreen = ({ navigation }: any) => {
             onChangeText={(text) => setFormData({...formData, phone: text})}
             keyboardType="phone-pad"
             placeholder="01xxxxxxxxx"
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني *</Text>
+          <TextInput 
+            style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+            value={formData.email}
+            onChangeText={(text) => setFormData({...formData, email: text})}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholder="example@email.com"
             placeholderTextColor={colors.textMuted}
           />
         </View>

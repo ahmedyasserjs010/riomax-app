@@ -19,6 +19,7 @@ export const ProfileScreen = ({ navigation }: any) => {
     { id: 'cart', title: 'السلة', icon: 'cart-outline', action: () => navigation.navigate('Home', { screen: 'Cart' }) },
     { id: 'wishlist', title: 'المفضلة', icon: 'heart-outline', action: () => navigation.navigate('Home', { screen: 'Wishlist' }) },
     { id: 'orders', title: 'طلباتي', icon: 'receipt-outline', action: () => navigation.navigate('Invoices') },
+    { id: 'trackOrder', title: 'تتبع طلب', icon: 'search-outline', action: () => navigation.navigate('TrackOrder') },
     { id: 'userProfile', title: 'بيانات المستخدم', icon: 'person-outline', action: () => navigation.navigate('UserProfile') },
   ];
 

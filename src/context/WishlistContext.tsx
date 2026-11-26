@@ -19,17 +19,26 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useUser();
 
-  // Use React Query to fetch and cache user wishlist
+  // Use React Query to fetch and cache wishlist (both user and guest)
   const { data: wishlistData, isLoading, refetch } = useQuery({
     queryKey: ['wishlist'],
     queryFn: async () => {
-      const response = await apiClient.get('/wishlist/getUserWishlist') as any;
-      return response.data?.data?.wishlist?.books || [];
+      try {
+        const response = await apiClient.get('/wishlist/getUserWishlist') as any;
+        return response.data?.data?.wishlist?.books || [];
+      } catch (error) {
+        console.warn('Error fetching wishlist:', error);
+        return [];
+      }
     },
-    enabled: isAuthenticated,
   });
 
-  const wishlist = isAuthenticated && wishlistData ? wishlistData : [];
+  // Re-fetch wishlist when authentication status changes
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+  }, [isAuthenticated]);
+
+  const wishlist = wishlistData || [];
 
   const refreshWishlist = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
@@ -37,7 +46,6 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [refetch]);
 
   const toggleWishlist = async (productId: string) => {
-    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
       const exists = wishlist.some((item: IProduct) => (item._id || item.id) === productId);
       if (exists) {
@@ -60,7 +68,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         wishlist,
         wishlistCount: wishlist.length,
-        isLoading: isAuthenticated ? isLoading : false,
+        isLoading,
         toggleWishlist,
         isInWishlist,
         refreshWishlist,

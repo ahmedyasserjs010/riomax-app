@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,26 +9,77 @@ import {
   Alert 
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 import apiClient from '../api/apiClient';
 import { Colors } from '../theme/colors';
+import { getGuestId, clearGuestId } from '../utils/guest';
 
 export const ConfirmEmailScreen = ({ route, navigation }: any) => {
   const { email } = route.params || {};
   const { colors } = useTheme();
+  const { saveAuthData } = useUser();
+
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Resend OTP cooldown
+  const [countdown, setCountdown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      setCanResend(true);
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const handleResend = async () => {
+    if (!canResend || !email) return;
+    setResending(true);
+    try {
+      await apiClient.post('/auth/resend-confirm-email', { email });
+      Alert.alert('تم الإرسال', 'تم إعادة إرسال كود التأكيد إلى بريدك الإلكتروني بنجاح');
+      setCountdown(60);
+      setCanResend(false);
+      setOtp('');
+    } catch (err: any) {
+      Alert.alert('خطأ', err.message || 'فشل إعادة إرسال الرمز');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleConfirm = async () => {
-    if (!otp) {
-      Alert.alert('خطأ', 'يرجى إدخال رمز التأكيد');
+    if (!otp || otp.length !== 6) {
+      Alert.alert('خطأ', 'يرجى إدخال رمز التأكيد المكون من 6 أرقام');
       return;
     }
     setLoading(true);
     try {
-      await apiClient.patch('/auth/confirm-email', { email, otp });
-      Alert.alert('نجاح', 'تم تأكيد بريدك الإلكتروني بنجاح. يمكنك الآن تسجيل الدخول.', [
-        { text: 'تسجيل الدخول', onPress: () => navigation.navigate('Login') }
-      ]);
+      const guestId = await getGuestId();
+      const res: any = await apiClient.patch('/auth/confirm-email', { email, otp, guestId });
+
+      const creds = res?.data?.data?.newCredentials || res?.data?.newCredentials;
+      if (creds?.accessToken && creds?.refreshToken) {
+        await saveAuthData(creds.accessToken, creds.refreshToken);
+        await clearGuestId();
+        Alert.alert('تم بنجاح', 'تم تأكيد حسابك وتسجيل الدخول بنجاح!', [
+          {
+            text: 'الانتقال للمتجر',
+            onPress: () => navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            })
+          }
+        ]);
+      } else {
+        Alert.alert('نجاح', 'تم تأكيد بريدك الإلكتروني بنجاح. يمكنك الآن تسجيل الدخول.', [
+          { text: 'تسجيل الدخول', onPress: () => navigation.navigate('Login') }
+        ]);
+      }
     } catch (err: any) {
       Alert.alert('خطأ', err.message || 'فشل تأكيد البريد الإلكتروني');
     } finally {
@@ -48,25 +99,40 @@ export const ConfirmEmailScreen = ({ route, navigation }: any) => {
         <TextInput 
           style={[styles.input, { color: colors.text, letterSpacing: 10 }]}
           value={otp}
-          onChangeText={setOtp}
+          onChangeText={(val) => setOtp(val.replace(/\D/g, '').slice(0, 6))}
           placeholder="000000"
           placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
           maxLength={6}
           textAlign="center"
+          autoFocus
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
         />
       </View>
 
       <TouchableOpacity 
         style={[styles.btn, { backgroundColor: Colors.primary }]}
         onPress={handleConfirm}
-        disabled={loading}
+        disabled={loading || otp.length !== 6}
       >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>تأكيد الآن</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.resendBtn} onPress={() => Alert.alert('قريباً', 'سيتم تفعيل إعادة إرسال الرمز قريباً')}>
+      <TouchableOpacity 
+        style={styles.resendBtn} 
+        onPress={handleResend}
+        disabled={!canResend || resending}
+      >
+        {resending ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : canResend ? (
           <Text style={{ color: Colors.primary, fontWeight: 'bold' }}>إعادة إرسال الرمز</Text>
+        ) : (
+          <Text style={{ color: colors.textMuted }}>
+            إعادة الإرسال بعد <Text style={{ color: Colors.primary, fontWeight: 'bold' }}>{countdown}</Text> ثانية
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );

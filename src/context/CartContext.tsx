@@ -22,17 +22,26 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useUser();
 
-  // Use React Query to fetch and cache user cart
+  // Use React Query to fetch and cache cart (both user and guest)
   const { data: cartData, isLoading, refetch } = useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
-      const response = await apiClient.get('/cart/getUserCart') as any;
-      return response.data?.data?.cart || null;
+      try {
+        const response = await apiClient.get('/cart/getUserCart') as any;
+        return response.data?.data?.cart || null;
+      } catch (error) {
+        console.warn('Error fetching cart:', error);
+        return null;
+      }
     },
-    enabled: isAuthenticated,
   });
 
-  const cartItems = isAuthenticated && cartData?.items ? cartData.items : [];
+  // Re-fetch cart when authentication status changes
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['cart'] });
+  }, [isAuthenticated]);
+
+  const cartItems = cartData?.items ? cartData.items : [];
   const cartCount = cartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
 
   const refreshCart = useCallback(async () => {
@@ -41,7 +50,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refetch]);
 
   const addToCart = async (productId: string, quantity: number = 1) => {
-    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
       await apiClient.post('/cart/addToCart', { productId, quantity });
       await refreshCart();
@@ -51,7 +59,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCartQuantity = async (productId: string, quantity: number) => {
-    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
       await apiClient.put('/cart/updateCart', { productId, quantity });
       await refreshCart();
@@ -61,7 +68,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeFromCart = async (productId: string) => {
-    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
       await apiClient.delete(`/cart/removeFromCart/${productId}`);
       await refreshCart();
@@ -71,7 +77,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearCart = async () => {
-    if (!isAuthenticated) throw new Error('يرجى تسجيل الدخول أولاً');
     try {
       await apiClient.delete('/cart/clearCart');
       await refreshCart();
@@ -93,7 +98,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         cartItems,
         cartCount,
-        isLoading: isAuthenticated ? isLoading : false,
+        isLoading,
         refreshCart,
         addToCart,
         updateCartQuantity,

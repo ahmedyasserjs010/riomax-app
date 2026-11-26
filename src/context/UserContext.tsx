@@ -5,6 +5,7 @@ import { queryClient } from '../api/queryClient';
 import apiClient, { setSessionExpiredCallback, markAsLoggedOut, markAsLoggedIn } from '../api/apiClient';
 import { LoginPayload, User } from '../types';
 import { storage } from '../utils/storage';
+import { getGuestId, clearGuestId } from '../utils/guest';
 
 interface UserContextType {
   userToken: string | null;
@@ -90,9 +91,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (payload: LoginPayload) => {
     try {
-      const response = await apiClient.post('/auth/login', payload) as any;
+      const guestId = await getGuestId();
+      const response = await apiClient.post('/auth/login', { ...payload, guestId }) as any;
       const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
+      await clearGuestId();
     } catch (error) {
       throw error;
     }
@@ -100,9 +103,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const googleLogin = async (credential: string) => {
     try {
-      const response = await apiClient.post('/auth/social-login-google', { token: credential }) as any;
+      const guestId = await getGuestId();
+      const response = await apiClient.post('/auth/social-login-google', { token: credential, guestId }) as any;
       const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
+      await clearGuestId();
     } catch (error) {
       throw error;
     }

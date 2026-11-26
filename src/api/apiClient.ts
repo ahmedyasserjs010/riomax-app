@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
+import { getGuestId } from '../utils/guest';
 
 const API_URLS = {
   production: 'https://api.riomax.com.eg/api/v1',
@@ -56,23 +57,32 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request interceptor to attach token
+// Request interceptor to attach token & guest identifier
 apiClient.interceptors.request.use(
   async (config: any) => {
+    config.headers = config.headers || {};
     if (isLoggedOut) {
-      if (config.headers && config.headers.Authorization) {
-        delete config.headers.Authorization;
+      delete config.headers.Authorization;
+    } else {
+      try {
+        const token = await storage.getItem('accessToken');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.error('Error fetching token from storage', e);
       }
-      return config;
     }
+
     try {
-      const token = await storage.getItem('accessToken');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const guestId = await getGuestId();
+      if (guestId) {
+        config.headers['x-guest-id'] = guestId;
       }
     } catch (e) {
-      console.error('Error fetching token from storage', e);
+      console.error('Error attaching guestId to request', e);
     }
+
     return config;
   },
   (error: any) => Promise.reject(error)

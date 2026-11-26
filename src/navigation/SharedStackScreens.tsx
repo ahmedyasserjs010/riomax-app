@@ -13,6 +13,8 @@ import { AboutScreen } from '../screens/AboutScreen';
 import { ContactScreen } from '../screens/ContactScreen';
 import { QAScreen } from '../screens/QAScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { CheckoutOtpScreen } from '../screens/CheckoutOtpScreen';
+import { TrackOrderScreen } from '../screens/TrackOrderScreen';
 
 interface SharedStackScreensProps {
   Stack: any;
@@ -90,6 +92,16 @@ export const SharedStackScreens = ({ Stack }: SharedStackScreensProps): React.JS
         name="ChangePassword" 
         component={ChangePasswordScreen} 
         options={{ title: 'تغيير كلمة المرور' }} 
+      />
+      <Stack.Screen 
+        name="CheckoutOtp" 
+        component={CheckoutOtpScreen} 
+        options={{ title: 'تأكيد البريد الإلكتروني' }} 
+      />
+      <Stack.Screen 
+        name="TrackOrder" 
+        component={TrackOrderScreen} 
+        options={{ title: 'تتبع الطلب' }} 
       />
     </>
   );

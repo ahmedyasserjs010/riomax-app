@@ -51,16 +51,7 @@ export const WishlistScreen = ({ navigation }: any) => {
   };
 
 
-  if (!isAuthenticated) {
-    return (
-      <AuthGuard 
-      title="لم يتم اضافة منتجات بعد" 
-      subtitle="قم بتسجيل الدخول اولا واضف المنتجات"
-    >
-        <View />
-      </AuthGuard>
-    );
-  }
+
 
   if (isLoading && wishlist.length === 0) {
     return (
