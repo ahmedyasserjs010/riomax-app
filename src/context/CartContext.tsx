@@ -9,14 +9,20 @@ import { CartMergeModal } from '../components/CartMergeModal';
 
 interface CartContextType {
   cartItems: CartItem[];
+  savedItems: CartItem[];
   cartCount: number;
+  savedCount: number;
   isLoading: boolean;
   refreshCart: () => Promise<void>;
   addToCart: (productId: string, quantity?: number) => Promise<void>;
   updateCartQuantity: (productId: string, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   clearCart: () => Promise<void>;
+  toggleSaved: (productId: string) => Promise<void>;
+  mergeAllSaved: () => Promise<void>;
   isInCart: (productId: string) => boolean;
+}
+
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -48,6 +54,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userCart: any;
     guestId: string;
   } | null>(null);
+
+  // Compute saved items and counts
+  const savedItems = cartData?.items ? cartData.items.filter((item: any) => item.isSavedForLater) : [];
+  const savedCount = savedItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
 
   useEffect(() => {
     const checkConflict = async () => {
@@ -126,6 +136,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearCart = async () => {
     try {
       await apiClient.delete('/cart/clearCart');
+      await refreshCart();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const toggleSaved = async (productId: string) => {
+    try {
+      await apiClient.patch(`/cart/toggle-saved/${productId}`);
+      await refreshCart();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const mergeAllSaved = async () => {
+    try {
+      await apiClient.post('/cart/merge-all-saved');
       await refreshCart();
     } catch (error) {
       throw error;

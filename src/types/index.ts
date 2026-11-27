@@ -104,6 +104,10 @@ export interface CartItem {
   _id: string;
   Products: IProduct | string;
   quantity: number;
+  isSavedForLater?: boolean;
+  _id: string;
+  Products: IProduct | string;
+  quantity: number;
 }
 
 export interface CartData {
