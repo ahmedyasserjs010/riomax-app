@@ -34,6 +34,21 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
   const guestItems = guestCart?.items?.filter((i: any) => i.Products) || [];
   const userItems = userCart?.items?.filter((i: any) => i.Products) || [];
 
+  const guestTotal = guestItems.reduce((sum: number, item: any) => {
+    const p = item.Products;
+    const price = p?.priceAfterDiscount || p?.price || 0;
+    return sum + price * (item.quantity || 1);
+  }, 0);
+
+  const userTotal = userItems.reduce((sum: number, item: any) => {
+    const p = item.Products;
+    const price = p?.priceAfterDiscount || p?.price || 0;
+    return sum + price * (item.quantity || 1);
+  }, 0);
+
+  const combinedTotal = guestTotal + userTotal;
+  const combinedCount = guestItems.length + userItems.length;
+
   const handleAction = async (action: 'merge' | 'keep_guest' | 'keep_user') => {
     setLoadingAction(action);
     try {
@@ -43,10 +58,13 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
     }
   };
 
-  const renderSection = (items: any[], title: string, badgeBg: string, badgeColor: string) => (
+  const renderSection = (items: any[], title: string, badgeBg: string, badgeColor: string, totalAmount: number, iconName: any) => (
     <View style={[styles.sectionCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name={iconName} size={18} color={badgeColor} style={{ marginLeft: 6 }} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+        </View>
         <View style={[styles.badge, { backgroundColor: badgeBg }]}>
           <Text style={[styles.badgeText, { color: badgeColor }]}>
             {items.length} {items.length === 1 ? 'منتج' : 'منتجات'}
@@ -88,6 +106,11 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
           })
         )}
       </ScrollView>
+
+      <View style={[styles.sectionFooter, { borderTopColor: colors.border }]}>
+        <Text style={[styles.sectionFooterLabel, { color: colors.textMuted }]}>إجمالي هذا القسم:</Text>
+        <Text style={[styles.sectionFooterTotal, { color: Colors.primary }]}>{totalAmount.toLocaleString()} ج.م</Text>
+      </View>
     </View>
   );
 
@@ -104,7 +127,7 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
               تم العثور على منتجات سابقة في حسابك!
             </Text>
             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              لديك منتجات أضفتها كزائر ومنتجات محفوظة مسبقاً في حسابك، كيف تحب أن تتابع؟
+              لديك منتجات أضفتها كزائر في الجلسة الحالية، ومنتجات أخرى محفوظة مسبقاً في حسابك. اختر ما يناسبك للمتابعة:
             </Text>
           </View>
 
@@ -114,18 +137,23 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
               guestItems,
               'سلة الجلسة الحالية (الزائر)',
               'rgba(249, 115, 22, 0.15)',
-              Colors.primary
+              Colors.primary,
+              guestTotal,
+              'cart-outline'
             )}
             {renderSection(
               userItems,
               'سلة حسابك المسجل',
               'rgba(59, 130, 246, 0.15)',
-              '#2563eb'
+              '#2563eb',
+              userTotal,
+              'person-outline'
             )}
           </ScrollView>
 
-          {/* Action Buttons */}
+          {/* 3 Explicit Purchase Action Cards */}
           <View style={styles.actions}>
+            {/* Option 1: Merge & Proceed to Purchase */}
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: Colors.primary }]}
               onPress={() => handleAction('merge')}
@@ -134,39 +162,56 @@ export const CartMergeModal: React.FC<CartMergeModalProps> = ({
               {loadingAction === 'merge' ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <>
-                  <Ionicons name="layers-outline" size={18} color="#fff" style={styles.btnIcon} />
-                  <Text style={styles.primaryBtnText}>دمج السلتين معاً (الاحتفاظ بالكل)</Text>
-                </>
+                <View style={styles.btnContentRow}>
+                  <View style={styles.btnTextCol}>
+                    <Text style={styles.primaryBtnText}>دمج السلتين معاً ومتابعة الشراء (الكل)</Text>
+                    <Text style={styles.primaryBtnSubtext}>
+                      إتمام الشراء بكافة المنتجات ({combinedCount} منتجات - {combinedTotal.toLocaleString()} ج.م)
+                    </Text>
+                  </View>
+                  <Ionicons name="layers-outline" size={22} color="#fff" style={styles.btnIcon} />
+                </View>
               )}
             </TouchableOpacity>
 
             <View style={styles.secondaryRow}>
+              {/* Option 2: Guest Cart Only */}
               <TouchableOpacity
-                style={[styles.secondaryBtn, { borderColor: Colors.primary }]}
+                style={[styles.secondaryBtn, { borderColor: Colors.primary, backgroundColor: 'rgba(249, 115, 22, 0.08)' }]}
                 onPress={() => handleAction('keep_guest')}
                 disabled={loadingAction !== null}
               >
                 {loadingAction === 'keep_guest' ? (
                   <ActivityIndicator color={Colors.primary} size="small" />
                 ) : (
-                  <Text style={[styles.secondaryBtnText, { color: Colors.primary }]}>
-                    سلة الزائر فقط
-                  </Text>
+                  <View style={styles.secondaryBtnCol}>
+                    <Text style={[styles.secondaryBtnTitle, { color: Colors.primary }]}>
+                      متابعة بسلة الزائر فقط
+                    </Text>
+                    <Text style={[styles.secondaryBtnSub, { color: colors.textMuted }]}>
+                      {guestItems.length} منتج ({guestTotal.toLocaleString()} ج.م)
+                    </Text>
+                  </View>
                 )}
               </TouchableOpacity>
 
+              {/* Option 3: User Cart Only */}
               <TouchableOpacity
-                style={[styles.secondaryBtn, { borderColor: colors.border }]}
+                style={[styles.secondaryBtn, { borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}
                 onPress={() => handleAction('keep_user')}
                 disabled={loadingAction !== null}
               >
                 {loadingAction === 'keep_user' ? (
-                  <ActivityIndicator color={colors.text} size="small" />
+                  <ActivityIndicator color="#2563eb" size="small" />
                 ) : (
-                  <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                    سلة الحساب فقط
-                  </Text>
+                  <View style={styles.secondaryBtnCol}>
+                    <Text style={[styles.secondaryBtnTitle, { color: '#2563eb' }]}>
+                      متابعة بسلة الحساب فقط
+                    </Text>
+                    <Text style={[styles.secondaryBtnSub, { color: colors.textMuted }]}>
+                      {userItems.length} منتج ({userTotal.toLocaleString()} ج.م)
+                    </Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
@@ -241,6 +286,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(150,150,150,0.2)',
   },
+  sectionTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: 'bold',
@@ -256,6 +305,22 @@ const styles = StyleSheet.create({
   },
   itemList: {
     maxHeight: 120,
+  },
+  sectionFooter: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    marginTop: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  sectionFooterLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sectionFooterTotal: {
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   emptyText: {
     textAlign: 'center',
@@ -302,19 +367,32 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+  },
+  btnContentRow: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
+    justifyContent: 'space-between',
+  },
+  btnTextCol: {
+    flex: 1,
   },
   btnIcon: {
-    marginRight: 6,
+    marginLeft: 10,
   },
   primaryBtnText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  primaryBtnSubtext: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 2,
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -322,15 +400,24 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     flex: 1,
-    paddingVertical: 11,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 14,
     borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  secondaryBtnText: {
+  secondaryBtnCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryBtnTitle: {
     fontSize: 12,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  secondaryBtnSub: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });
 

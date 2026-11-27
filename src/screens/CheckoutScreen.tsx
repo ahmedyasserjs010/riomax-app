@@ -272,13 +272,6 @@ export const CheckoutScreen = ({ navigation }: any) => {
   };
 
   const handlePlaceOrder = async () => {
-    const emailTrimmed = formData.email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (emailTrimmed && !emailRegex.test(emailTrimmed)) {
-      Alert.alert('خطأ', 'يرجى كتابة بريد إلكتروني صالح أو تركه فارغاً.');
-      return;
-    }
-
     if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
       Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة (الاسم، الهاتف، العنوان، المحافظة، والمدينة / المركز)');
       return;
@@ -297,7 +290,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       const payload = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        email: emailTrimmed ? emailTrimmed.toLowerCase() : undefined,
+        email: isAuthenticated ? (formData.email?.trim()?.toLowerCase() || undefined) : undefined,
         address: formData.address.trim(),
         governorate: formData.governorate.trim(),
         city: formData.city.trim(),
@@ -606,6 +599,29 @@ export const CheckoutScreen = ({ navigation }: any) => {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
+        {!isAuthenticated && (
+          <View style={[styles.guestBanner, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.guestBannerHeader}>
+              <View style={styles.guestBannerIcon}>
+                <Ionicons name="person-outline" size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.guestBannerText}>
+                <Text style={[styles.guestBannerTitle, { color: colors.text }]}>وضع الشراء كزائر (بدون تسجيل)</Text>
+                <Text style={[styles.guestBannerSubtitle, { color: colors.textMuted }]}>
+                  لا يلزم بريد إلكتروني، سيتم تأكيد وتتبع طلبك عبر الهاتف والواتساب مباشرة.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={[styles.guestLoginBtn, { borderColor: Colors.primary }]} 
+              onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+            >
+              <Text style={styles.guestLoginBtnText}>هل تملك حساباً؟ سجّل دخولك</Text>
+              <Ionicons name="chevron-back" size={14} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <Text style={[styles.sectionTitle, { color: colors.text }]}>معلومات الشحن</Text>
         
         <View style={styles.inputGroup}>
@@ -631,18 +647,23 @@ export const CheckoutScreen = ({ navigation }: any) => {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني (اختياري)</Text>
-          <TextInput 
-            style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-            value={formData.email}
-            onChangeText={(text) => setFormData({...formData, email: text})}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="اختياري - لمتابعة الفاتورة (example@email.com)"
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
+        {!isAuthenticated ? (
+          <View style={[styles.guestNoticeBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}>
+            <Ionicons name="checkmark-circle-outline" size={18} color="#10b981" />
+            <Text style={[styles.guestNoticeText, { color: colors.text }]}>
+              بصفتك زائر، لا تحتاج لإدخال بريد إلكتروني. سنؤكد طلبك ونتواصل معك عبر الهاتف والواتساب.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني (حسابك المسجل)</Text>
+            <TextInput 
+              style={[styles.input, { backgroundColor: colors.card, color: colors.textMuted, borderColor: colors.border }]}
+              value={formData.email}
+              editable={false}
+            />
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>المحافظة *</Text>
@@ -1374,5 +1395,69 @@ const styles = StyleSheet.create({
   orderInfoValueBold: {
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  guestBanner: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  guestBannerHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  guestBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guestBannerText: {
+    flex: 1,
+  },
+  guestBannerTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  guestBannerSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: 'right',
+  },
+  guestLoginBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  guestLoginBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  guestNoticeBox: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 16,
+  },
+  guestNoticeText: {
+    fontSize: 12,
+    flex: 1,
+    textAlign: 'right',
   },
 });
