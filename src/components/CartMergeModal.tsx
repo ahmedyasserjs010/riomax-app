@@ -1,0 +1,336 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { Colors } from '../theme/colors';
+
+interface CartMergeModalProps {
+  visible: boolean;
+  guestCart: any;
+  userCart: any;
+  onResolve: (action: 'merge' | 'keep_guest' | 'keep_user') => Promise<void>;
+}
+
+export const CartMergeModal: React.FC<CartMergeModalProps> = ({
+  visible,
+  guestCart,
+  userCart,
+  onResolve,
+}) => {
+  const { colors } = useTheme();
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  if (!visible || (!guestCart && !userCart)) return null;
+
+  const guestItems = guestCart?.items?.filter((i: any) => i.Products) || [];
+  const userItems = userCart?.items?.filter((i: any) => i.Products) || [];
+
+  const handleAction = async (action: 'merge' | 'keep_guest' | 'keep_user') => {
+    setLoadingAction(action);
+    try {
+      await onResolve(action);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const renderSection = (items: any[], title: string, badgeBg: string, badgeColor: string) => (
+    <View style={[styles.sectionCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+        <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+          <Text style={[styles.badgeText, { color: badgeColor }]}>
+            {items.length} {items.length === 1 ? 'منتج' : 'منتجات'}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView style={styles.itemList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+        {items.length === 0 ? (
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>لا توجد منتجات</Text>
+        ) : (
+          items.map((item: any, idx: number) => {
+            const product = item.Products;
+            const imgUrl = product?.images?.[0]?.secure_url || product?.images?.[0]?.url || null;
+            const price = product?.priceAfterDiscount || product?.price || 0;
+
+            return (
+              <View key={item._id || idx} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+                {imgUrl ? (
+                  <Image source={{ uri: imgUrl }} style={styles.itemImage} contentFit="cover" />
+                ) : (
+                  <View style={[styles.itemImage, styles.placeholderImage, { backgroundColor: colors.border }]}>
+                    <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+                  </View>
+                )}
+                <View style={styles.itemInfo}>
+                  <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+                    {product?.name || 'منتج'}
+                  </Text>
+                  <View style={styles.itemMeta}>
+                    <Text style={[styles.itemQty, { color: colors.textMuted }]}>الكمية: {item.quantity}</Text>
+                    <Text style={[styles.itemPrice, { color: Colors.primary }]}>
+                      {(price * item.quantity).toLocaleString()} ج.م
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.overlay}>
+        <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="swap-horizontal" size={28} color={Colors.primary} />
+            </View>
+            <Text style={[styles.title, { color: colors.text }]}>
+              تم العثور على منتجات سابقة في حسابك!
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+              لديك منتجات أضفتها كزائر ومنتجات محفوظة مسبقاً في حسابك، كيف تحب أن تتابع؟
+            </Text>
+          </View>
+
+          {/* Items lists */}
+          <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
+            {renderSection(
+              guestItems,
+              'سلة الجلسة الحالية (الزائر)',
+              'rgba(249, 115, 22, 0.15)',
+              Colors.primary
+            )}
+            {renderSection(
+              userItems,
+              'سلة حسابك المسجل',
+              'rgba(59, 130, 246, 0.15)',
+              '#2563eb'
+            )}
+          </ScrollView>
+
+          {/* Action Buttons */}
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: Colors.primary }]}
+              onPress={() => handleAction('merge')}
+              disabled={loadingAction !== null}
+            >
+              {loadingAction === 'merge' ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="layers-outline" size={18} color="#fff" style={styles.btnIcon} />
+                  <Text style={styles.primaryBtnText}>دمج السلتين معاً (الاحتفاظ بالكل)</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.secondaryRow}>
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { borderColor: Colors.primary }]}
+                onPress={() => handleAction('keep_guest')}
+                disabled={loadingAction !== null}
+              >
+                {loadingAction === 'keep_guest' ? (
+                  <ActivityIndicator color={Colors.primary} size="small" />
+                ) : (
+                  <Text style={[styles.secondaryBtnText, { color: Colors.primary }]}>
+                    سلة الزائر فقط
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { borderColor: colors.border }]}
+                onPress={() => handleAction('keep_user')}
+                disabled={loadingAction !== null}
+              >
+                {loadingAction === 'keep_user' ? (
+                  <ActivityIndicator color={colors.text} size="small" />
+                ) : (
+                  <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
+                    سلة الحساب فقط
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '100%',
+    maxHeight: '85%',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+  },
+  scrollArea: {
+    maxHeight: 280,
+    marginBottom: 16,
+  },
+  sectionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(150,150,150,0.2)',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  itemList: {
+    maxHeight: 120,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 12,
+    paddingVertical: 10,
+  },
+  itemRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  itemImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  itemMeta: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+  },
+  itemQty: {
+    fontSize: 11,
+  },
+  itemPrice: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  actions: {
+    gap: 8,
+  },
+  primaryBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  btnIcon: {
+    marginRight: 6,
+  },
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  secondaryBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+});
+

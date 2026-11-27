@@ -16,7 +16,7 @@ export type SharedStackParamList = {
   QA: undefined;
   ChangePassword: undefined;
   CheckoutOtp: { email: string };
-  TrackOrder: undefined;
+  TrackOrder: { orderNumber?: string; phone?: string } | undefined;
 };
 
 export type RootStackParamList = {

@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../api/queryClient';
 import apiClient from '../api/apiClient';
 import { useUser } from './UserContext';
 import { CartItem } from '../types';
+import { getGuestId, clearGuestId } from '../utils/guest';
+import { CartMergeModal } from '../components/CartMergeModal';
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -40,6 +42,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['cart'] });
   }, [isAuthenticated]);
+
+  const [conflictData, setConflictData] = useState<{
+    guestCart: any;
+    userCart: any;
+    guestId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const checkConflict = async () => {
+      if (isAuthenticated) {
+        const guestId = await getGuestId();
+        if (guestId) {
+          try {
+            const preview: any = await apiClient.get('/cart/merge-preview', { params: { guestId } });
+            const data = preview?.data?.data;
+            if (data?.hasConflict && data.guestCart && data.userCart) {
+              setConflictData({
+                guestCart: data.guestCart,
+                userCart: data.userCart,
+                guestId
+              });
+            }
+          } catch (e) {
+            console.warn('Check cart conflict error:', e);
+          }
+        }
+      }
+    };
+    checkConflict();
+  }, [isAuthenticated]);
+
+  const resolveConflict = async (action: 'merge' | 'keep_guest' | 'keep_user') => {
+    if (!conflictData?.guestId) return;
+    try {
+      await apiClient.post('/cart/resolve-merge', {
+        guestId: conflictData.guestId,
+        action
+      });
+      setConflictData(null);
+      await clearGuestId();
+      await refreshCart();
+    } catch (e) {
+      console.error('Resolve cart conflict error:', e);
+    }
+  };
 
   const cartItems = cartData?.items ? cartData.items : [];
   const cartCount = cartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
@@ -108,6 +155,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }}
     >
       {children}
+      {conflictData && (
+        <CartMergeModal
+          visible={Boolean(conflictData)}
+          guestCart={conflictData.guestCart}
+          userCart={conflictData.userCart}
+          onResolve={resolveConflict}
+        />
+      )}
     </CartContext.Provider>
   );
 };

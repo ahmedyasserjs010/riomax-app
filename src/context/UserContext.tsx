@@ -95,7 +95,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiClient.post('/auth/login', { ...payload, guestId }) as any;
       const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
-      await clearGuestId();
+      if (!response.data?.data?.cartConflict) {
+        await clearGuestId();
+      }
     } catch (error) {
       throw error;
     }
@@ -107,7 +109,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiClient.post('/auth/social-login-google', { token: credential, guestId }) as any;
       const { accessToken, refreshToken } = response.data.data.newCredentials;
       await saveAuthData(accessToken, refreshToken);
-      await clearGuestId();
+      if (!response.data?.data?.cartConflict) {
+        await clearGuestId();
+      }
     } catch (error) {
       throw error;
     }

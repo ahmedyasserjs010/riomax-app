@@ -68,6 +68,16 @@ export const CheckoutScreen = ({ navigation }: any) => {
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [paymentResult, setPaymentResult] = useState<'success' | 'pending' | 'cancelled' | 'failed' | 'unavailable' | null>(null);
 
+  // Placed Order State
+  const [placedOrder, setPlacedOrder] = useState<{
+    orderNumber: string;
+    customerName: string;
+    customerPhone: string;
+    customerAddress: string;
+    total: number;
+    isGuest: boolean;
+  } | null>(null);
+
   // Terms
   const [acceptPolicy, setAcceptPolicy] = useState(false);
 
@@ -262,9 +272,15 @@ export const CheckoutScreen = ({ navigation }: any) => {
   };
 
   const handlePlaceOrder = async () => {
+    const emailTrimmed = formData.email.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.email.trim() || !emailRegex.test(formData.email.trim()) || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
-      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة بما فيها البريد الإلكتروني والمحافظة والمدينة / المركز');
+    if (emailTrimmed && !emailRegex.test(emailTrimmed)) {
+      Alert.alert('خطأ', 'يرجى كتابة بريد إلكتروني صالح أو تركه فارغاً.');
+      return;
+    }
+
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || !formData.governorate.trim() || !formData.city.trim()) {
+      Alert.alert('خطأ', 'يرجى إكمال جميع البيانات المطلوبة (الاسم، الهاتف، العنوان، المحافظة، والمدينة / المركز)');
       return;
     }
 
@@ -281,7 +297,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
       const payload = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        email: formData.email.trim().toLowerCase(),
+        email: emailTrimmed ? emailTrimmed.toLowerCase() : undefined,
         address: formData.address.trim(),
         governorate: formData.governorate.trim(),
         city: formData.city.trim(),
@@ -306,21 +322,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
         shippingCost: shipping
       };
 
-      // If guest (not logged in), save checkout form and navigate to OTP verification
-      if (!isAuthenticated) {
-        await storage.setItem('riomax_guest_checkout_form', JSON.stringify(payload));
-        try {
-          await apiClient.post('/auth/checkout-otp/send', { email: formData.email.trim().toLowerCase() });
-          showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني', 'success');
-          navigation.navigate('CheckoutOtp', { email: formData.email.trim().toLowerCase() });
-        } catch (otpErr: any) {
-          Alert.alert('خطأ', otpErr.message || 'فشل إرسال كود التحقق. يرجى التأكد من البريد الإلكتروني.');
-        } finally {
-          setLoading(false);
-        }
-        return;
-      }
-
+      // Direct Order creation for both authenticated users and guests (no OTP required)
       // Online Payment with Paymob
       if (formData.paymentMethod === 'paymob_card' || formData.paymentMethod === 'paymob_wallet') {
         const response: any = await PaymentService.createPaymobIntention(payload);
@@ -346,8 +348,10 @@ export const CheckoutScreen = ({ navigation }: any) => {
         }
       }
 
-      // Normal Offline flow
-      await OrderService.createOrder(payload);
+      // Normal Direct flow (COD, etc.)
+      const orderRes: any = await OrderService.createOrder(payload);
+      const createdOrder = orderRes?.data?.data?.order || orderRes?.data?.order || orderRes?.order;
+      const orderNumber = createdOrder?.orderNumber || 'قيد المراجعة';
 
       // Refresh cart immediately after success
       try {
@@ -418,8 +422,16 @@ export const CheckoutScreen = ({ navigation }: any) => {
       await safeOpenURL(whatsappUrl, 'تعذر فتح تطبيق واتساب. يرجى التأكد من تثبيت التطبيق.');
 
       showToast('تم إجراء الفاتورة بنجاح!', 'success');
-      // Invalidate invoices cache and navigate
-      finishCheckout();
+      
+      // Show Order Success Modal
+      setPlacedOrder({
+        orderNumber,
+        customerName: payload.name,
+        customerPhone: payload.phone,
+        customerAddress: `${payload.governorate} - ${payload.city} - ${payload.address}`,
+        total: payload.total,
+        isGuest: !isAuthenticated
+      });
     } catch (err: any) {
       showToast(err.message || 'فشل في إتمام الطلب', 'error');
     } finally {
@@ -620,14 +632,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني *</Text>
+          <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني (اختياري)</Text>
           <TextInput 
             style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
             value={formData.email}
             onChangeText={(text) => setFormData({...formData, email: text})}
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholder="example@email.com"
+            placeholder="اختياري - لمتابعة الفاتورة (example@email.com)"
             placeholderTextColor={colors.textMuted}
           />
         </View>
@@ -895,12 +907,32 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 <TouchableOpacity 
                   style={[styles.resultBtn, { backgroundColor: Colors.primary }]}
                   onPress={() => {
+                    const targetOrder = currentOrderNumber;
+                    const targetPhone = formData.phone;
                     setPaymentResult(null);
-                    finishCheckout();
+                    if (!isAuthenticated) {
+                      navigation.navigate('TrackOrder', { orderNumber: targetOrder, phone: targetPhone });
+                    } else {
+                      finishCheckout();
+                    }
                   }}
                 >
-                  <Text style={styles.resultBtnText}>عرض الفواتير والطلبات</Text>
+                  <Text style={styles.resultBtnText}>
+                    {!isAuthenticated ? 'تتبع طلبك الآن 🚚' : 'عرض الفواتير والطلبات 📑'}
+                  </Text>
                 </TouchableOpacity>
+
+                {!isAuthenticated && (
+                  <TouchableOpacity 
+                    style={[styles.resultBtnSecondary, { borderColor: colors.border, marginTop: 8 }]}
+                    onPress={() => {
+                      setPaymentResult(null);
+                      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                    }}
+                  >
+                    <Text style={[styles.resultBtnSecondaryText, { color: colors.text }]}>العودة للرئيسية والتسوق 🛍️</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
 
@@ -921,11 +953,19 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 <TouchableOpacity 
                   style={[styles.resultBtn, { backgroundColor: '#F59E0B', marginBottom: 10 }]}
                   onPress={() => {
+                    const targetOrder = currentOrderNumber;
+                    const targetPhone = formData.phone;
                     setPaymentResult(null);
-                    finishCheckout();
+                    if (!isAuthenticated) {
+                      navigation.navigate('TrackOrder', { orderNumber: targetOrder, phone: targetPhone });
+                    } else {
+                      finishCheckout();
+                    }
                   }}
                 >
-                  <Text style={styles.resultBtnText}>متابعة الطلب في الفواتير</Text>
+                  <Text style={styles.resultBtnText}>
+                    {!isAuthenticated ? 'تتبع الطلب 🚚' : 'متابعة الطلب في الفواتير'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.resultBtnSecondary, { borderColor: colors.border }]}
@@ -1014,6 +1054,80 @@ export const CheckoutScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+      {/* Placed Order Success Modal */}
+      <Modal visible={Boolean(placedOrder)} transparent animationType="fade">
+        <View style={styles.resultOverlay}>
+          <View style={[styles.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.resultIconBg, { backgroundColor: Colors.success + '20' }]}>
+              <Ionicons name="checkmark-circle" size={80} color={Colors.success} />
+            </View>
+            <View style={[styles.guestBadge, { backgroundColor: placedOrder?.isGuest ? 'rgba(168, 85, 247, 0.15)' : 'rgba(34, 197, 94, 0.15)' }]}>
+              <Text style={[styles.guestBadgeText, { color: placedOrder?.isGuest ? '#9333ea' : '#16a34a' }]}>
+                {placedOrder?.isGuest ? 'طلب زائر ناجح 👤' : 'طلب مسجل ناجح 🎉'}
+              </Text>
+            </View>
+            <Text style={[styles.resultTitle, { color: colors.text }]}>تم تسجيل طلبك بنجاح!</Text>
+            <Text style={[styles.resultDesc, { color: colors.textMuted }]}>
+              شكراً لتسوقك من ريوماكس. سيتم التواصل معك هاتفياً لمراجعة الطلب وتأكيد الشحن.
+            </Text>
+
+            {placedOrder && (
+              <View style={[styles.orderInfoBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <View style={styles.orderInfoRow}>
+                  <Text style={[styles.orderInfoLabel, { color: colors.textMuted }]}>رقم الطلب:</Text>
+                  <Text style={[styles.orderInfoValueHighlight, { color: Colors.primary }]}>{placedOrder.orderNumber}</Text>
+                </View>
+                <View style={styles.orderInfoRow}>
+                  <Text style={[styles.orderInfoLabel, { color: colors.textMuted }]}>المستلم:</Text>
+                  <Text style={[styles.orderInfoValue, { color: colors.text }]}>{placedOrder.customerName}</Text>
+                </View>
+                <View style={styles.orderInfoRow}>
+                  <Text style={[styles.orderInfoLabel, { color: colors.textMuted }]}>الهاتف:</Text>
+                  <Text style={[styles.orderInfoValue, { color: colors.text }]}>{placedOrder.customerPhone}</Text>
+                </View>
+                <View style={styles.orderInfoRow}>
+                  <Text style={[styles.orderInfoLabel, { color: colors.textMuted }]}>الإجمالي:</Text>
+                  <Text style={[styles.orderInfoValueBold, { color: Colors.primary }]}>{placedOrder.total.toLocaleString()} ج.م</Text>
+                </View>
+              </View>
+            )}
+
+            <TouchableOpacity 
+              style={[styles.resultBtn, { backgroundColor: Colors.primary }]}
+              onPress={() => {
+                const targetOrder = placedOrder?.orderNumber;
+                const targetPhone = placedOrder?.customerPhone;
+                setPlacedOrder(null);
+                navigation.navigate('TrackOrder', { orderNumber: targetOrder, phone: targetPhone });
+              }}
+            >
+              <Text style={styles.resultBtnText}>تتبع طلبك الآن 🚚</Text>
+            </TouchableOpacity>
+
+            {!placedOrder?.isGuest && (
+              <TouchableOpacity 
+                style={[styles.resultBtnSecondary, { borderColor: colors.border, marginTop: 8 }]}
+                onPress={() => {
+                  setPlacedOrder(null);
+                  finishCheckout();
+                }}
+              >
+                <Text style={[styles.resultBtnSecondaryText, { color: colors.text }]}>عرض الفواتير والطلبات 📑</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity 
+              style={[styles.resultBtnSecondary, { borderColor: 'transparent', marginTop: 4 }]}
+              onPress={() => {
+                setPlacedOrder(null);
+                navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+              }}
+            >
+              <Text style={[styles.resultBtnSecondaryText, { color: Colors.primary }]}>العودة للرئيسية والتسوق 🛍️</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1221,5 +1335,44 @@ const styles = StyleSheet.create({
   resultBtnSecondaryText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  guestBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 12,
+    alignSelf: 'center',
+  },
+  guestBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  orderInfoBox: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 18,
+  },
+  orderInfoRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  orderInfoLabel: {
+    fontSize: 13,
+  },
+  orderInfoValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  orderInfoValueHighlight: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  orderInfoValueBold: {
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });

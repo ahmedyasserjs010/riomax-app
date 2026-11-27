@@ -26,15 +26,15 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: keyof typ
   returned: { label: 'مسترجع', color: '#4b5563', icon: 'arrow-undo-circle-outline', bg: 'rgba(75, 85, 99, 0.1)' },
 };
 
-export const TrackOrderScreen = ({ navigation }: any) => {
+export const TrackOrderScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
-  const [orderNumber, setOrderNumber] = useState('');
-  const [phone, setPhone] = useState('');
+  const [orderNumber, setOrderNumber] = useState(route?.params?.orderNumber || '');
+  const [phone, setPhone] = useState(route?.params?.phone || '');
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
 
-  const handleTrack = async () => {
-    if (!orderNumber.trim() || !phone.trim()) {
+  const performTrack = async (targetOrder: string, targetPhone: string) => {
+    if (!targetOrder.trim() || !targetPhone.trim()) {
       Alert.alert('خطأ', 'يرجى إدخال رقم الطلب ورقم الهاتف');
       return;
     }
@@ -43,8 +43,8 @@ export const TrackOrderScreen = ({ navigation }: any) => {
     setOrderData(null);
     try {
       const response: any = await apiClient.post('/orders/track', {
-        orderNumber: orderNumber.trim(),
-        phone: phone.trim()
+        orderNumber: targetOrder.trim(),
+        phone: targetPhone.trim()
       });
 
       if (response?.data?.data?.order) {
@@ -60,6 +60,21 @@ export const TrackOrderScreen = ({ navigation }: any) => {
       setLoading(false);
     }
   };
+
+  const handleTrack = async () => {
+    await performTrack(orderNumber, phone);
+  };
+
+  React.useEffect(() => {
+    const paramOrder = route?.params?.orderNumber;
+    const paramPhone = route?.params?.phone;
+    if (paramOrder) setOrderNumber(paramOrder);
+    if (paramPhone) setPhone(paramPhone);
+
+    if (paramOrder && paramPhone) {
+      performTrack(paramOrder, paramPhone);
+    }
+  }, [route?.params]);
 
   const statusInfo = orderData ? (STATUS_MAP[orderData.orderStatus] || STATUS_MAP.pending) : null;
 
