@@ -105,15 +105,15 @@ export interface CartItem {
   Products: IProduct | string;
   quantity: number;
   isSavedForLater?: boolean;
-  _id: string;
-  Products: IProduct | string;
-  quantity: number;
 }
 
 export interface CartData {
   _id: string;
-  user: string;
+  user?: string;
+  guestId?: string;
   items: CartItem[];
+  savedItems?: CartItem[];
+  allItems?: CartItem[];
 }
 
 // Service Responses

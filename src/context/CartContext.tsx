@@ -23,8 +23,6 @@ interface CartContextType {
   isInCart: (productId: string) => boolean;
 }
 
-}
-
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -55,8 +53,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     guestId: string;
   } | null>(null);
 
-  // Compute saved items and counts
-  const savedItems = cartData?.items ? cartData.items.filter((item: any) => item.isSavedForLater) : [];
+  // Compute active vs saved items and counts
+  const cartItems = cartData?.items ? cartData.items.filter((item: any) => !item.isSavedForLater) : [];
+  const savedItems = cartData?.savedItems 
+    ? cartData.savedItems 
+    : (cartData?.items ? cartData.items.filter((item: any) => item.isSavedForLater) : []);
+  const cartCount = cartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
   const savedCount = savedItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
 
   useEffect(() => {
@@ -97,9 +99,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Resolve cart conflict error:', e);
     }
   };
-
-  const cartItems = cartData?.items ? cartData.items : [];
-  const cartCount = cartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
 
   const refreshCart = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -172,13 +171,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider
       value={{
         cartItems,
+        savedItems,
         cartCount,
+        savedCount,
         isLoading,
         refreshCart,
         addToCart,
         updateCartQuantity,
         removeFromCart,
         clearCart,
+        toggleSaved,
+        mergeAllSaved,
         isInCart,
       }}
     >
