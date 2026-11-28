@@ -12,12 +12,21 @@ interface CartContextType {
   savedItems: CartItem[];
   cartCount: number;
   savedCount: number;
+  conflictData: {
+    guestCart: any;
+    userCart: any;
+    guestId: string;
+  } | null;
+  resolveConflict: (action: 'merge' | 'keep_guest' | 'keep_user') => Promise<void>;
   isLoading: boolean;
   refreshCart: () => Promise<void>;
   addToCart: (productId: string, quantity?: number) => Promise<void>;
   updateCartQuantity: (productId: string, quantity: number) => Promise<void>;
-  removeFromCart: (productId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
+  removeFromCart: (productId: string, isSaved?: boolean) => Promise<void>;
+  clearCart: (type?: 'active' | 'saved' | 'all') => Promise<void>;
+  clearActiveCart: () => Promise<void>;
+  clearSavedCart: () => Promise<void>;
+  clearAllCart: () => Promise<void>;
   toggleSaved: (productId: string) => Promise<void>;
   mergeAllSaved: () => Promise<void>;
   isInCart: (productId: string) => boolean;
@@ -123,22 +132,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const removeFromCart = async (productId: string) => {
+  const removeFromCart = async (productId: string, isSaved?: boolean) => {
     try {
-      await apiClient.delete(`/cart/removeFromCart/${productId}`);
+      const query = isSaved !== undefined ? `?saved=${isSaved}` : '';
+      await apiClient.delete(`/cart/removeFromCart/${productId}${query}`);
       await refreshCart();
     } catch (error) {
       throw error;
     }
   };
 
-  const clearCart = async () => {
+  const clearCart = async (type: 'active' | 'saved' | 'all' = 'active') => {
     try {
-      await apiClient.delete('/cart/clearCart');
+      await apiClient.delete(`/cart/clearCart?type=${type}`);
       await refreshCart();
     } catch (error) {
       throw error;
     }
+  };
+
+  const clearActiveCart = async () => {
+    return clearCart('active');
+  };
+
+  const clearSavedCart = async () => {
+    return clearCart('saved');
+  };
+
+  const clearAllCart = async () => {
+    return clearCart('all');
   };
 
   const toggleSaved = async (productId: string) => {
@@ -174,12 +196,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         savedItems,
         cartCount,
         savedCount,
+        conflictData,
+        resolveConflict,
         isLoading,
         refreshCart,
         addToCart,
         updateCartQuantity,
         removeFromCart,
         clearCart,
+        clearActiveCart,
+        clearSavedCart,
+        clearAllCart,
         toggleSaved,
         mergeAllSaved,
         isInCart,
